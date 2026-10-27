@@ -12,6 +12,17 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  
+  api:
+    build: ./api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://athena_app:${APP_DB_PASSWORD}@db:5432/${POSTGRES_DB}
+    ports:
+      - "127.0.0.1:8000:8000" # localhost only
     
 volumes:
   pgdata:
