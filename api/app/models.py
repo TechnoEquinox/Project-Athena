@@ -149,7 +149,7 @@ class UserSession(db.Model):
     __tablename__ = "user_session"
 
     token_hash: Mapped[str] = mapped_column(Text, primary_key=True)   # SHA-256 of the cookie token
-    user_id: Mapped[int] = mapped_column(ForeignKey("app_user.user_id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("app_user.user_id", ondelete="CASCADE"), unique=True)
     csrf_token: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
