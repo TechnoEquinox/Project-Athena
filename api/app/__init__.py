@@ -1,9 +1,11 @@
 from flask import Flask
 
+from typing import Any
+
 from .config import Config
 from .extensions import db, migrate
 
-def create_app(config_object=Config):
+def create_app(config_object: type[Any] | str = Config):
     app = Flask(__name__)
     app.config.from_object(config_object)
 
