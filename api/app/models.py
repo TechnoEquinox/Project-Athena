@@ -137,6 +137,7 @@ class AppUser(db.Model):
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
     failed_login_count: Mapped[int] = mapped_column(SmallInteger, server_default=text("0"))
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    lockout_requires_admin: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     password_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     totp_secret_encrypted: Mapped[str | None] = mapped_column(Text)
