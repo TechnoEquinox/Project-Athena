@@ -8,7 +8,7 @@ from app.models import Appointment, Client, ClientFeedback, Tech
 
 
 def make_tech_and_client():
-    tech = Tech(first_name="Connor", last_name="Bailey", start_date=date(2024, 1, 1))
+    tech = Tech(first_name="Test", last_name="Navigator", start_date=date(2024, 1, 1))
     client = Client(first_name="Test", last_name="Client", languages=["English", "Spanish"])
     db.session.add_all([tech, client])
     db.session.commit()

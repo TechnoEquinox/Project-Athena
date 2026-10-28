@@ -7,13 +7,22 @@ from datetime import date, datetime
 
 from sqlalchemy import (
     Boolean, CheckConstraint, Column, Date, DateTime, ForeignKey, Identity,
-    Integer, SmallInteger, Text, func, text,
+    Integer, SmallInteger, Text, func, select, text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .extensions import db
 
+ROLES = ("admin", "manager", "navigator")
+
+class SoftDeleteMixin:
+    """Rows are hidden, not removed. Always query through Model.active()"""
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+
+    @classmethod
+    def active(cls):
+        return select(cls).where(cls.deleted_at.is_(None))
 
 class Tech(db.Model):
     __tablename__ = "tech"
@@ -25,7 +34,7 @@ class Tech(db.Model):
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
 
 
-class Client(db.Model):
+class Client(SoftDeleteMixin,db.Model):
     __tablename__ = "client"
 
     client_id: Mapped[int] = mapped_column(Identity(always=True), primary_key=True)
@@ -38,7 +47,7 @@ class Client(db.Model):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-class ClientDevice(db.Model):
+class ClientDevice(SoftDeleteMixin,db.Model):
     __tablename__ = "client_device"
 
     device_id: Mapped[int] = mapped_column(Identity(always=True), primary_key=True)
@@ -49,7 +58,7 @@ class ClientDevice(db.Model):
     description: Mapped[str | None] = mapped_column(Text)
 
 
-class Appointment(db.Model):
+class Appointment(SoftDeleteMixin, db.Model):
     __tablename__ = "appointment"
     __table_args__ = (
         CheckConstraint("length_minutes > 0", name="length_positive"),
@@ -80,7 +89,7 @@ appointment_device = db.Table(
 )
 
 
-class CallLog(db.Model):
+class CallLog(SoftDeleteMixin, db.Model):
     __tablename__ = "call_log"
 
     call_id: Mapped[int] = mapped_column(Identity(always=True), primary_key=True)
@@ -111,3 +120,36 @@ class ClientFeedback(db.Model):
     tech_communication_rating: Mapped[int | None] = mapped_column(SmallInteger)
     tech_friendliness_rating: Mapped[int | None] = mapped_column(SmallInteger)
     comments: Mapped[str | None] = mapped_column(Text)
+
+class AppUser(db.Model):
+    __tablename__ = "app_user"
+    __table_args__ = (
+        CheckConstraint("role IN ('admin', 'manager', 'navigator')", name="role_valid"),
+        CheckConstraint("username = lower(username)", name="username_lowercase"),
+        CheckConstraint("role <> 'navigator' OR tech_id IS NOT NULL", name="navigator_has_tech"),
+    )
+
+    user_id: Mapped[int] = mapped_column(Identity(always=True), primary_key=True)
+    username: Mapped[str] = mapped_column(Text, unique=True)
+    password_hash: Mapped[str] = mapped_column(Text)
+    role: Mapped[str] = mapped_column(Text)
+    tech_id: Mapped[int | None] = mapped_column(ForeignKey("tech.tech_id"), unique=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
+    failed_login_count: Mapped[int] = mapped_column(SmallInteger, server_default=text("0"))
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    password_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    totp_secret_encrypted: Mapped[str | None] = mapped_column(Text)
+    totp_enabled: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class UserSession(db.Model):
+    __tablename__ = "user_session"
+
+    token_hash: Mapped[str] = mapped_column(Text, primary_key=True)   # SHA-256 of the cookie token
+    user_id: Mapped[int] = mapped_column(ForeignKey("app_user.user_id", ondelete="CASCADE"), index=True)
+    csrf_token: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))   # absolute timeout
