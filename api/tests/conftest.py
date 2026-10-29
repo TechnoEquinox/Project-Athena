@@ -7,6 +7,8 @@ from sqlalchemy import text
 from app import create_app
 from app.extensions import db
 
+from app.auth.middleware import roles_required
+
 TEST_DATABASE_URL = os.environ["TEST_DATABASE_URL"]
 
 class TestConfig:
@@ -20,6 +22,23 @@ def app():
     assert TestConfig.SQLALCHEMY_DATABASE_URI.endswith("_test"), "Refusing to run tests against a non-test database."
 
     app = create_app(TestConfig)
+
+    # Stand-in endpoints for testing role checks (test-only)
+    @app.get("/_probe/read")
+    @roles_required("admin", "manager", "navigator")
+    def probe_read():
+        return {"ok": True}
+
+    @app.post("/_probe/write")
+    @roles_required("admin", "navigator")
+    def probe_write():
+        return {"ok": True}
+
+    @app.post("/_probe/admin")
+    @roles_required("admin")
+    def probe_admin():
+        return {"ok": True}
+
     with app.app_context():
         upgrade(directory="migrations") # builds the database schema from the real migrations
 

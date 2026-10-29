@@ -4,7 +4,7 @@ from functools import wraps
 from flask import current_app, g, jsonify, make_response, request
 
 from ..extensions import db
-from ..models import AppUser
+from ..models import ROLES, AppUser
 from . import clock, settings
 from .sessions import lookup_session
 
@@ -55,4 +55,27 @@ def login_required(view):
         g.user = db.session.get(AppUser, row.user_id)
         return view(*args, **kwargs)
 
+    setattr(wrapped, "login_required", True)
     return wrapped
+
+def roles_required(*roles):
+    """Require a live session and one of the given roles. 
+    
+    Order of checks: login, then CSRF (for unsafe methods), then role.
+    """
+    unknown = set(roles) - set(ROLES)
+    if unknown:
+        raise ValueError(f"Unknown role(s): {', '.join(sorted(unknown))}")
+
+    def decorator(view):
+        @wraps(view)
+        def checked(*args, **kwargs):
+            if g.user.role not in roles:
+                return make_response(jsonify(error="forbidden"), 403)
+            return view(*args, **kwargs)
+
+        protected = login_required(checked)
+        setattr(protected, "required_roles", frozenset(roles))
+        return protected
+
+    return decorator

@@ -18,4 +18,7 @@ def create_app(config_object: type[Any] | str = Config):
     app.register_blueprint(health.bp)
     app.register_blueprint(auth_bp)
 
+    from .cli import register_cli
+    register_cli(app)
+
     return app
