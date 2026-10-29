@@ -13,7 +13,9 @@ def create_app(config_object: type[Any] | str = Config):
     migrate.init_app(app, db)
 
     from . import health
+    from .auth.routes import bp as auth_bp
     from . import models # noqa: F401 (registers the tables with SQLAlchemy)
     app.register_blueprint(health.bp)
+    app.register_blueprint(auth_bp)
 
     return app

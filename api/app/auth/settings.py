@@ -16,3 +16,8 @@ BASE_LOCK = timedelta(minutes=5)    # doubles after each further auth failure
 # Timeout
 TOUCH_INTERVAL = timedelta(seconds=60)  # don't write the last_seen_at more often than this
 TOKEN_BYTES = 32                        # 256 bits of randomness per token
+
+# Cookies and CSRF
+COOKIE_NAME = "athena_session"
+CSRF_HEADER = "X-CSRF-Token"
+SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})

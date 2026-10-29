@@ -37,3 +37,7 @@ def fake_verify(password: str) -> bool:
     """Burn the same time as a real check. Always return False."""
     verify_password(_DUMMY_HASH, password)
     return False
+
+def rehash_password(password: str) -> str:
+    """Re-hash a password that was just verified. Skips the policy checks on purpose."""
+    return _hasher.hash(password)
