@@ -3,6 +3,7 @@ from sqlalchemy import select
 
 from ..extensions import db
 from ..models import AppUser
+from .. import audit
 from . import clock
 from .accounts import change_password
 from .lockout import is_locked, record_failure, record_success
@@ -58,11 +59,30 @@ def login():
 
     if user is None or not user.is_active or is_locked(user, now):
         fake_verify(password)   # same time cost, and attempts during a lock don't count
-        db.session.rollback()
+        if user is None:
+            reason = "unknown_user"
+        elif not user.is_active:
+            reason = "inactive"
+        else:
+            reason = "locked"
+        audit.record("login_failed", actor=user, detail={"reason": reason})
+        db.session.commit()
         return _failure()
 
     if not verify_password(user.password_hash, password):
         record_failure(user, now)
+        audit.record(
+            "login_failed", actor=user,
+            detail={"reason": "bad_password", "failed_count": user.failed_login_count},
+        )
+        if is_locked(user, now):
+            audit.record(
+                "account_locked", actor=user,
+                detail={
+                    "failed_count": user.failed_login_count,
+                    "requires_admin": user.lockout_requires_admin,
+                },
+            )
         db.session.commit()
         return _failure()
 
@@ -70,6 +90,7 @@ def login():
     if needs_rehash(user.password_hash):
         user.password_hash = rehash_password(password)
     token, row = create_session(user, now)
+    audit.record("login_success", actor=user)
     payload = _payload(user, row.csrf_token)
     db.session.commit()
 
@@ -79,6 +100,7 @@ def login():
 @bp.post("/logout")
 @login_required
 def logout():
+    audit.record("logout", actor=g.user)
     db.session.delete(g.session)
     db.session.commit()
     return clear_cookie(make_response(jsonify(status="ok")))
@@ -96,7 +118,7 @@ def _end_session_locked():
 @bp.post("/change-password")
 @login_required
 def change_password_endpoint():
-    data = request.get_json(silent=True) # only parses a JSON content type
+    data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return jsonify(error="bad_request"), 400
     current, new = data.get("current_password"), data.get("new_password")
@@ -105,7 +127,7 @@ def change_password_endpoint():
 
     now = clock.now()
 
-    # Row lock, same reason as login: simultaneous guesses can't dodge the login counter
+    # Row lock, same reason as login: simultaneous guesses can't dodge the counter
     user = db.session.scalar(
         select(AppUser)
         .where(AppUser.user_id == g.user.user_id)
@@ -115,6 +137,7 @@ def change_password_endpoint():
 
     if is_locked(user, now):
         revoke_user_sessions(user.user_id)
+        audit.record("password_change_failed", actor=user, detail={"reason": "account_locked"})
         db.session.commit()
         return _end_session_locked()
 
@@ -123,6 +146,18 @@ def change_password_endpoint():
         locked = is_locked(user, now)
         if locked:
             revoke_user_sessions(user.user_id)
+        audit.record(
+            "password_change_failed", actor=user,
+            detail={"reason": "current_password_incorrect", "failed_count": user.failed_login_count},
+        )
+        if locked:
+            audit.record(
+                "account_locked", actor=user,
+                detail={
+                    "failed_count": user.failed_login_count,
+                    "requires_admin": user.lockout_requires_admin,
+                },
+            )
         db.session.commit()
         if locked:
             return _end_session_locked()
@@ -141,6 +176,7 @@ def change_password_endpoint():
     user.failed_login_count = 0
     user.locked_until = None
     token, row = create_session(user, now)   # rotate: fresh cookie and CSRF token
+    audit.record("password_changed", actor=user, target_type="user", target_id=user.user_id)
     payload = _payload(user, row.csrf_token)
     db.session.commit()
 

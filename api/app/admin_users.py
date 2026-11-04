@@ -11,6 +11,7 @@ from .auth.sessions import revoke_user_sessions
 from .auth.users import UserCreationError, create_user
 from .extensions import db
 from .models import AppUser
+from . import audit
 
 bp = Blueprint("admin_users", __name__, url_prefix="/api/admin")
 
@@ -62,6 +63,8 @@ def create_user_endpoint():
 
     try:
         user = create_user(username.strip(), password, role, tech_id)
+        audit.record("user_created", actor=g.user, target_type="user", target_id=user.user_id,
+                     detail={"role": user.role, "tech_id": user.tech_id})
         db.session.commit()
     except PasswordPolicyError as exc:
         db.session.rollback()
@@ -83,6 +86,7 @@ def deactivate_user(user_id):
         return jsonify(error="cannot_deactivate_self"), 400
     user.is_active = False
     revoke_user_sessions(user.user_id)
+    audit.record("user_deactivated", actor=g.user, target_type="user", target_id=user.user_id)
     db.session.commit()
     return jsonify(user=_serialize(user))
 
@@ -94,6 +98,7 @@ def reactivate_user(user_id):
     if user is None:
         return _not_found()
     user.is_active = True
+    audit.record("user_reactivated", actor=g.user, target_type="user", target_id=user.user_id)
     db.session.commit()
     return jsonify(user=_serialize(user))
 
@@ -106,6 +111,7 @@ def unlock_user_endpoint(user_id):
         return _not_found()
     admin_unlock(user)
     revoke_user_sessions(user.user_id)
+    audit.record("user_unlocked", actor=g.user, target_type="user", target_id=user.user_id)
     db.session.commit()
     return jsonify(user=_serialize(user))
 
@@ -129,5 +135,6 @@ def reset_password_endpoint(user_id):
         db.session.rollback()
         return jsonify(error="weak_password", message=str(exc)), 400
     admin_unlock(user)   # a reset is usually for a locked-out user
+    audit.record("user_password_reset", actor=g.user, target_type="user", target_id=user.user_id)
     db.session.commit()
     return jsonify(user=_serialize(user))

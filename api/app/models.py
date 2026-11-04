@@ -6,10 +6,10 @@
 from datetime import date, datetime
 
 from sqlalchemy import (
-    Boolean, CheckConstraint, Column, Date, DateTime, ForeignKey, Identity,
+    BigInteger, Boolean, CheckConstraint, Column, Date, DateTime, ForeignKey, Identity,
     Integer, SmallInteger, Text, func, select, text,
 )
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .extensions import db
@@ -154,3 +154,17 @@ class UserSession(db.Model):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))   # absolute timeout
+
+class AuditLog(db.Model):
+    __tablename__ = "audit_log"
+
+    audit_id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+    actor_user_id: Mapped[int | None] = mapped_column(Integer)  # deliberately no foreign key
+    actor_username: Mapped[str | None] = mapped_column(Text)    # snapshot that survives account changes
+    action: Mapped[str] = mapped_column(Text, index=True)
+    target_type: Mapped[str | None] = mapped_column(Text)
+    target_id: Mapped[str | None] = mapped_column(Text)
+    detail: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True)) 

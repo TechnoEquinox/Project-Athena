@@ -10,12 +10,15 @@ from .auth.sessions import purge_expired
 from .auth.users import UserCreationError, create_user
 from .extensions import db
 from .models import ROLES, AppUser, Tech
+from . import audit
 
 
 def _make_user(username: str, role: str, tech_id: int | None) -> None:
     password = click.prompt("Password", hide_input=True, confirmation_prompt=True)
     try:
         user = create_user(username, password, role, tech_id)
+        audit.record("user_created", target_type="user", target_id=user.user_id,
+                     detail={"role": role, "via": "cli"})
         db.session.commit()
     except (UserCreationError, PasswordPolicyError) as exc:
         db.session.rollback()
@@ -67,6 +70,8 @@ def register_cli(app):
         if user is None:
             raise click.ClickException(f"No such user: {username}")
         unlock_user(user)
+        audit.record("user_unlocked", target_type="user", target_id=user.user_id,
+                     detail={"via": "cli"})
         db.session.commit()
         click.echo(f"Unlocked '{user.username}' and ended their session.")
 
