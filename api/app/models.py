@@ -6,7 +6,7 @@
 from datetime import date, datetime
 
 from sqlalchemy import (
-    BigInteger, Boolean, CheckConstraint, Column, Date, DateTime, ForeignKey, Identity,
+    BigInteger, Boolean, CheckConstraint, UniqueConstraint, Column, Date, DateTime, ForeignKey, Identity,
     Integer, SmallInteger, Text, func, select, text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
@@ -142,6 +142,7 @@ class AppUser(db.Model):
     password_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     totp_secret_encrypted: Mapped[str | None] = mapped_column(Text)
     totp_enabled: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    totp_last_used_step: Mapped[int | None] = mapped_column(BigInteger)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -168,3 +169,23 @@ class AuditLog(db.Model):
     target_type: Mapped[str | None] = mapped_column(Text)
     target_id: Mapped[str | None] = mapped_column(Text)
     detail: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True)) 
+
+class MfaChallenge(db.Model):
+    """Proof that the password step passed. Not a session: it unlocks only /login/totp."""
+    __tablename__ = "mfa_challenge"
+
+    token_hash: Mapped[str] = mapped_column(Text, primary_key=True)   # SHA-256 of the cookie token
+    user_id: Mapped[int] = mapped_column(ForeignKey("app_user.user_id", ondelete="CASCADE"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class RecoveryCode(db.Model):
+    __tablename__ = "recovery_code"
+    __table_args__ = (UniqueConstraint("user_id", "code_hash"),)
+
+    code_id: Mapped[int] = mapped_column(Identity(always=True), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("app_user.user_id", ondelete="CASCADE"))
+    code_hash: Mapped[str] = mapped_column(Text)                      # SHA-256, never the code itself
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

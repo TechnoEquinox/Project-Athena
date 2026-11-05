@@ -4,9 +4,10 @@ import click
 from sqlalchemy import select
 
 from .auth import clock
+from .auth import mfa
 from .auth.accounts import unlock_user
 from .auth.passwords import PasswordPolicyError
-from .auth.sessions import purge_expired
+from .auth.sessions import purge_expired, revoke_user_sessions
 from .auth.users import UserCreationError, create_user
 from .extensions import db
 from .models import ROLES, AppUser, Tech
@@ -77,7 +78,25 @@ def register_cli(app):
 
     @app.cli.command("purge-sessions")
     def purge_sessions_command():
-        """Delete expired sessions."""
-        count = purge_expired(clock.now())
+        """Delete expired sessions and two-factor challenges."""
+        now = clock.now()
+        sessions = purge_expired(now)
+        challenges = mfa.purge_expired_challenges(now)
         db.session.commit()
-        click.echo(f"Purged {count} expired session(s).")
+        click.echo(f"Purged {sessions} expired session(s).")
+        click.echo(f"Purged {challenges} expired challenge(s).")
+
+    @app.cli.command("reset-totp")
+    @click.argument("username")
+    def reset_totp_command(username):
+        """Remove a user's two factor setup and end their session."""
+        user = db.session.scalar(
+            select(AppUser).where(AppUser.username == username.strip().lower())
+        )
+        if user is None:
+            raise click.ClickException(f"No such user: {username}")
+        mfa.disable_totp(user)
+        revoke_user_sessions(user.user_id)
+        audit.record("user_totp_reset", target_type="user", target_id=user.user_id, detail={"via": "cli"})
+        db.session.commit()
+        click.echo(f"Removed two-factor for '{user.username}' and ended their current session.")

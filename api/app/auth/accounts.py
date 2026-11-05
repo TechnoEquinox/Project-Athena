@@ -4,6 +4,7 @@ from ..models import AppUser
 from .lockout import admin_unlock
 from .passwords import hash_password
 from .sessions import revoke_user_sessions
+from .mfa import revoke_challenges
 
 
 def change_password(user: AppUser, new_password: str, now: datetime) -> None:
@@ -12,9 +13,11 @@ def change_password(user: AppUser, new_password: str, now: datetime) -> None:
     user.password_hash = new_hash
     user.password_changed_at = now
     revoke_user_sessions(user.user_id)
+    revoke_challenges(user.user_id)
 
 
 def unlock_user(user: AppUser) -> None:
     """Admin reset: clear the lockout and log the user out."""
     admin_unlock(user)
     revoke_user_sessions(user.user_id)
+    revoke_challenges(user.user_id)

@@ -1,13 +1,15 @@
-from flask import Blueprint, g, jsonify, make_response, request
+from flask import Blueprint, current_app, g, jsonify, make_response, request
 from sqlalchemy import select
 
+from .. import audit
 from ..extensions import db
 from ..models import AppUser
-from .. import audit
-from . import clock
+from . import clock, mfa, settings, totp
 from .accounts import change_password
 from .lockout import is_locked, record_failure, record_success
-from .middleware import clear_cookie, login_required, set_session_cookie
+from .middleware import (
+    clear_cookie, clear_mfa_cookie, login_required, set_mfa_cookie, set_session_cookie,
+)
 from .passwords import (
     PasswordPolicyError, fake_verify, needs_rehash, rehash_password, verify_password,
 )
@@ -31,8 +33,10 @@ def _payload(user: AppUser, csrf_token: str) -> dict:
             "username": user.username,
             "role": user.role,
             "tech_id": user.tech_id,
+            "two_factor_enabled": user.totp_enabled,
         },
         "csrf_token": csrf_token,
+        "mfa_setup_required": totp.setup_required(user),
     }
 
 
@@ -86,9 +90,19 @@ def login():
         db.session.commit()
         return _failure()
 
-    record_success(user, now)
     if needs_rehash(user.password_hash):
         user.password_hash = rehash_password(password)
+
+    if user.totp_enabled:
+        # The password is right, but the second factor is still needed. The failure
+        # counter is deliberately NOT reset here: if it were, someone who knows the
+        # password could guess codes forever by starting over after every miss.
+        challenge = mfa.create_challenge(user, now)
+        audit.record("login_mfa_required", actor=user)
+        db.session.commit()
+        return set_mfa_cookie(make_response(jsonify(mfa_required=True)), challenge)
+
+    record_success(user, now)
     token, row = create_session(user, now)
     audit.record("login_success", actor=user)
     payload = _payload(user, row.csrf_token)
@@ -181,3 +195,244 @@ def change_password_endpoint():
     db.session.commit()
 
     return set_session_cookie(make_response(jsonify(payload)), token)
+
+@bp.post("/login/totp")
+def login_totp():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify(error="bad_request"), 400
+    code, recovery = data.get("code"), data.get("recovery_code")
+    if (code is None) == (recovery is None):          # exactly one of the two
+        return jsonify(error="bad_request"), 400
+    value = code if code is not None else recovery
+    if not isinstance(value, str) or not value or len(value) > 64:
+        return jsonify(error="bad_request"), 400
+
+    now = clock.now()
+    challenge = mfa.lookup_challenge(request.cookies.get(settings.MFA_COOKIE_NAME), now)
+    if challenge is None:
+        db.session.commit()   # keep the deletion of an expired challenge
+        return clear_mfa_cookie(make_response(jsonify(error="mfa_expired"), 401))
+
+    # Row lock: simultaneous guesses can't dodge the counter or spend one code twice
+    user = db.session.scalar(
+        select(AppUser).where(AppUser.user_id == challenge.user_id).with_for_update()
+    )
+    if user is None or not user.is_active or not user.totp_enabled or is_locked(user, now):
+        if user is not None:
+            mfa.revoke_challenges(user.user_id)
+            audit.record("login_failed", actor=user, detail={"reason": "mfa_blocked"})
+        db.session.commit()
+        return clear_mfa_cookie(make_response(*_failure()))
+
+    method = mfa.verify_second_factor(user, code=code, recovery_code=recovery, now=now)
+
+    if method is None:
+        record_failure(user, now)
+        audit.record(
+            "login_failed", actor=user,
+            detail={
+                "reason": "bad_totp" if code is not None else "bad_recovery_code",
+                "failed_count": user.failed_login_count,
+            },
+        )
+        locked = is_locked(user, now)
+        if locked:
+            mfa.revoke_challenges(user.user_id)
+            audit.record(
+                "account_locked", actor=user,
+                detail={
+                    "failed_count": user.failed_login_count,
+                    "requires_admin": user.lockout_requires_admin,
+                },
+            )
+        db.session.commit()
+        response = make_response(
+            jsonify(error="invalid_code", message="That code is not valid."), 401
+        )
+        return clear_mfa_cookie(response) if locked else response
+
+    mfa.revoke_challenges(user.user_id)
+    record_success(user, now)
+    token, row = create_session(user, now)
+    detail = {"mfa": method}
+    if method == "recovery":
+        detail["recovery_codes_left"] = mfa.remaining_recovery_codes(user.user_id)
+    audit.record("login_success", actor=user, detail=detail)
+    payload = _payload(user, row.csrf_token)
+    db.session.commit()
+
+    return clear_mfa_cookie(set_session_cookie(make_response(jsonify(payload)), token))
+
+
+# ---------- managing your own two-factor ----------
+
+def _load_locked_user() -> AppUser:
+    """The current user, re-read under a row lock so failures can't dodge the counter."""
+    return db.session.scalar(
+        select(AppUser)
+        .where(AppUser.user_id == g.user.user_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+
+
+def _parse_reauth(data):
+    """Pull (password, code, recovery_code) from a JSON body, or None if malformed."""
+    if not isinstance(data, dict):
+        return None
+    password, code, recovery = data.get("current_password"), data.get("code"), data.get("recovery_code")
+    if not isinstance(password, str) or not password:
+        return None
+    if (code is None) == (recovery is None):
+        return None
+    value = code if code is not None else recovery
+    if not isinstance(value, str) or not value or len(value) > 64:
+        return None
+    return password, code, recovery
+
+
+def _confirm_identity(user, now, action, password, code=None, recovery=None):
+    """Re-check the password and, if given, a second factor.
+
+    Failures count toward lockout exactly like failed logins. Returns an error
+    response, or None when everything checked out. The caller has row-locked the user.
+    """
+    if is_locked(user, now):
+        revoke_user_sessions(user.user_id)
+        audit.record(f"{action}_failed", actor=user, detail={"reason": "account_locked"})
+        db.session.commit()
+        return _end_session_locked()
+
+    reason = None
+    if not verify_password(user.password_hash, password):
+        reason = "current_password_incorrect"
+    elif (code is not None or recovery is not None) and mfa.verify_second_factor(
+        user, code=code, recovery_code=recovery, now=now
+    ) is None:
+        reason = "invalid_code"
+    if reason is None:
+        return None
+
+    record_failure(user, now)
+    locked = is_locked(user, now)
+    if locked:
+        revoke_user_sessions(user.user_id)
+    audit.record(
+        f"{action}_failed", actor=user,
+        detail={"reason": reason, "failed_count": user.failed_login_count},
+    )
+    if locked:
+        audit.record(
+            "account_locked", actor=user,
+            detail={
+                "failed_count": user.failed_login_count,
+                "requires_admin": user.lockout_requires_admin,
+            },
+        )
+    db.session.commit()
+    if locked:
+        return _end_session_locked()
+    return jsonify(error=reason), 403
+
+
+@bp.post("/totp/setup")
+@login_required
+def totp_setup():
+    data = request.get_json(silent=True)
+    password = data.get("current_password") if isinstance(data, dict) else None
+    if not isinstance(password, str) or not password:
+        return jsonify(error="bad_request"), 400
+
+    now = clock.now()
+    user = _load_locked_user()
+    failure = _confirm_identity(user, now, "totp_setup", password)
+    if failure is not None:
+        return failure
+    if user.totp_enabled:
+        db.session.rollback()
+        return jsonify(error="already_enabled"), 409
+
+    secret = totp.generate_secret()
+    user.totp_secret_encrypted = totp.encrypt_secret(secret)   # pending until /totp/enable confirms it
+    user.totp_last_used_step = None
+    audit.record("totp_setup_started", actor=user)
+    db.session.commit()
+    return jsonify(secret=secret, otpauth_uri=totp.provisioning_uri(secret, user.username))
+
+
+@bp.post("/totp/enable")
+@login_required
+def totp_enable():
+    data = request.get_json(silent=True)
+    code = data.get("code") if isinstance(data, dict) else None
+    if not isinstance(code, str) or not code:
+        return jsonify(error="bad_request"), 400
+
+    now = clock.now()
+    user = _load_locked_user()
+    if user.totp_enabled:
+        db.session.rollback()
+        return jsonify(error="already_enabled"), 409
+    if not user.totp_secret_encrypted:
+        db.session.rollback()
+        return jsonify(error="setup_not_started"), 400
+    if mfa.verify_second_factor(user, code=code, now=now) is None:
+        db.session.rollback()
+        return jsonify(error="invalid_code"), 400
+
+    user.totp_enabled = True
+    codes = mfa.issue_recovery_codes(user)
+    audit.record("totp_enabled", actor=user, detail={"recovery_codes": len(codes)})
+    payload = _payload(user, g.session.csrf_token)
+    db.session.commit()
+    return jsonify(recovery_codes=codes, **payload)
+
+
+@bp.post("/totp/disable")
+@login_required
+def totp_disable():
+    parsed = _parse_reauth(request.get_json(silent=True))
+    if parsed is None:
+        return jsonify(error="bad_request"), 400
+    password, code, recovery = parsed
+
+    now = clock.now()
+    user = _load_locked_user()
+    if not user.totp_enabled:
+        db.session.rollback()
+        return jsonify(error="not_enabled"), 400
+    if user.role in current_app.config.get("TOTP_REQUIRED_ROLES", ()):
+        db.session.rollback()
+        return jsonify(error="totp_required_for_role"), 400
+    failure = _confirm_identity(user, now, "totp_disable", password, code, recovery)
+    if failure is not None:
+        return failure
+
+    mfa.disable_totp(user)
+    audit.record("totp_disabled", actor=user)
+    db.session.commit()
+    return jsonify(status="ok", two_factor_enabled=False)
+
+
+@bp.post("/totp/recovery-codes")
+@login_required
+def totp_recovery_codes():
+    parsed = _parse_reauth(request.get_json(silent=True))
+    if parsed is None:
+        return jsonify(error="bad_request"), 400
+    password, code, recovery = parsed
+
+    now = clock.now()
+    user = _load_locked_user()
+    if not user.totp_enabled:
+        db.session.rollback()
+        return jsonify(error="not_enabled"), 400
+    failure = _confirm_identity(user, now, "recovery_codes_regenerate", password, code, recovery)
+    if failure is not None:
+        return failure
+
+    codes = mfa.issue_recovery_codes(user)
+    audit.record("recovery_codes_regenerated", actor=user, detail={"recovery_codes": len(codes)})
+    db.session.commit()
+    return jsonify(recovery_codes=codes)

@@ -6,8 +6,13 @@ from sqlalchemy import text
 
 from app import create_app
 from app.extensions import db
-
 from app.auth.middleware import roles_required
+
+from datetime import datetime, timedelta, timezone
+from cryptography.fernet import Fernet
+from app.auth import clock
+
+T0 = datetime(2026, 11, 2, 9, 0, tzinfo=timezone.utc)
 
 TEST_DATABASE_URL = os.environ["TEST_DATABASE_URL"]
 
@@ -15,6 +20,8 @@ class TestConfig:
     TESTING = True
     SQLALCHEMY_DATABASE_URI = TEST_DATABASE_URL
     SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
+    TOTP_ENCRYPTION_KEYS = [Fernet.generate_key().decode()]
+    TOTP_REQUIRED_ROLES = ()
 
 @pytest.fixture(scope="session")
 def app():
@@ -57,3 +64,17 @@ def clean_db(app):
         tables = ", ".join(t.name for t in db.metadata.sorted_tables)
         db.session.execute(text(f"TRUNCATE TABLE {tables} RESTART IDENTITY CASCADE"))
         db.session.commit()
+
+class FakeClock:
+    def __init__(self):
+        self.t = T0
+
+    def advance(self, **kwargs):
+        self.t += timedelta(**kwargs)
+
+
+@pytest.fixture
+def fake_clock(monkeypatch):
+    fc = FakeClock()
+    monkeypatch.setattr(clock, "now", lambda: fc.t)
+    return fc

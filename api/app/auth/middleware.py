@@ -5,7 +5,7 @@ from flask import current_app, g, jsonify, make_response, request
 
 from ..extensions import db
 from ..models import ROLES, AppUser
-from . import clock, settings
+from . import clock, settings, totp
 from .sessions import lookup_session
 
 
@@ -20,7 +20,6 @@ def set_session_cookie(response, token: str):
     )
     return response
 
-
 def clear_cookie(response):
     response.delete_cookie(
         settings.COOKIE_NAME,
@@ -28,6 +27,20 @@ def clear_cookie(response):
     )
     return response
 
+def set_mfa_cookie(response, token: str):
+    response.set_cookie(
+        settings.MFA_COOKIE_NAME, token,
+        max_age=int(settings.MFA_CHALLENGE_TTL.total_seconds()),
+        httponly=True, secure=_secure(), samesite="Strict", path="/api/auth",
+    )
+    return response
+
+def clear_mfa_cookie(response):
+    response.delete_cookie(
+        settings.MFA_COOKIE_NAME,
+        httponly=True, secure=_secure(), samesite="Strict", path="/api/auth",
+    )
+    return response
 
 def login_required(view):
     """Require a live session. For unsafe methods, also require the CSRF header.
@@ -53,6 +66,8 @@ def login_required(view):
         db.session.commit()   # persists the throttled last_seen_at update
         g.session = row
         g.user = db.session.get(AppUser, row.user_id)
+        if totp.setup_required(g.user) and request.endpoint not in settings.MFA_SETUP_ENDPOINTS:
+            return make_response(jsonify(error="mfa_setup_required"), 403)
         return view(*args, **kwargs)
 
     setattr(wrapped, "login_required", True)

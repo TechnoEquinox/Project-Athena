@@ -22,7 +22,7 @@ MATRIX = [
 ]
 
 # Everything else must sit behind login_required (directly or via roles_required)
-PUBLIC_ENDPOINTS = {"static", "health.health", "auth.login"}
+PUBLIC_ENDPOINTS = {"static", "health.health", "auth.login", "auth.login_totp"}
 
 
 def login_as(app, client, role):
