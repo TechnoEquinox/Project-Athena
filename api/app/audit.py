@@ -1,3 +1,5 @@
+import ipaddress
+from flask import has_request_context, request
 from typing import Any
 
 from .extensions import db
@@ -14,6 +16,14 @@ def _check_keys(detail: dict) -> None:
         if isinstance(value, dict):
             _check_keys(value)
 
+def _client_ip() -> str | None:
+    """The requester's address, validated, or None (CLI, or garbage)."""
+    if not has_request_context():
+        return None
+    try:
+        return str(ipaddress.ip_address(request.remote_addr or ""))
+    except ValueError:
+        return None
 
 def record(
     action: str,
@@ -33,6 +43,7 @@ def record(
         target_type=target_type,
         target_id=str(target_id) if target_id is not None else None,
         detail=detail,
+        ip_address=_client_ip(),
     )
     db.session.add(entry)
     return entry

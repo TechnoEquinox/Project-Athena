@@ -27,6 +27,7 @@ def _serialize(entry: AuditLog) -> dict:
         "target_type": entry.target_type,
         "target_id": entry.target_id,
         "detail": entry.detail,
+        "ip_address": entry.ip_address,
     }
 
 

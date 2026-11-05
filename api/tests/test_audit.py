@@ -280,7 +280,7 @@ def test_audit_newest_first_with_expected_fields(app, client, admin):
     assert [e["action"] for e in entries[:3]] == ["event_02", "event_01", "event_00"]
     assert set(entries[0]) == {
         "audit_id", "occurred_at", "actor_user_id", "actor_username",
-        "action", "target_type", "target_id", "detail",
+        "action", "target_type", "target_id", "detail", "ip_address",
     }
     ids = [e["audit_id"] for e in entries]
     assert ids == sorted(ids, reverse=True)

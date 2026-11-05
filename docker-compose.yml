@@ -24,8 +24,22 @@ services:
       DATABASE_URL: postgresql+psycopg://athena_app:${APP_DB_PASSWORD}@db:5432/${POSTGRES_DB}
       TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY}
       TOTP_REQUIRED_ROLES: ${TOTP_REQUIRED_ROLES:-admin,manager}
+      PROXY_HOPS: "1"
     ports:
-      - "127.0.0.1:8000:8000" # localhost only
+      - "127.0.0.1:8000:8000"    # localhost only
+  
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    network_mode: host           # so ufw governs ports 80 and 443
+    depends_on:
+      - api
+    environment:
+      ATHENA_HOST: ${ATHENA_HOST:?set ATHENA_HOST in .env}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data         # holds the CA's private key, so back it up
+      - caddy_config:/config
   
   migrate:
     build: ./api
@@ -60,3 +74,5 @@ services:
     
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:

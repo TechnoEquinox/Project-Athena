@@ -14,3 +14,4 @@ class Config:
     TOTP_REQUIRED_ROLES = tuple(
         r.strip() for r in os.environ.get("TOTP_REQUIRED_ROLES", "admin,manager").split(",") if r.strip()
     )
+    PROXY_HOPS = int(os.environ.get("PROXY_HOPS", "0"))

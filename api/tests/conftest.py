@@ -22,6 +22,10 @@ class TestConfig:
     SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
     TOTP_ENCRYPTION_KEYS = [Fernet.generate_key().decode()]
     TOTP_REQUIRED_ROLES = ()
+    PROXY_HOPS = 0
+
+class ProxiedConfig(TestConfig):
+    PROXY_HOPS = 1
 
 @pytest.fixture(scope="session")
 def app():
@@ -78,3 +82,8 @@ def fake_clock(monkeypatch):
     fc = FakeClock()
     monkeypatch.setattr(clock, "now", lambda: fc.t)
     return fc
+
+@pytest.fixture(scope="session")
+def proxied_app(app):
+    """A second app wired like the production app: one tristed proxy in front of it."""
+    return create_app(ProxiedConfig)

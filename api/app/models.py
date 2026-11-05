@@ -168,7 +168,8 @@ class AuditLog(db.Model):
     action: Mapped[str] = mapped_column(Text, index=True)
     target_type: Mapped[str | None] = mapped_column(Text)
     target_id: Mapped[str | None] = mapped_column(Text)
-    detail: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True)) 
+    detail: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True))
+    ip_address: Mapped[str | None] = mapped_column(Text)        # validated by audit.record 
 
 class MfaChallenge(db.Model):
     """Proof that the password step passed. Not a session: it unlocks only /login/totp."""

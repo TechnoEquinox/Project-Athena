@@ -4,10 +4,15 @@ from typing import Any
 
 from .config import Config
 from .extensions import db, migrate
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 def create_app(config_object: type[Any] | str = Config):
     app = Flask(__name__)
     app.config.from_object(config_object)
+    hops = app.config.get("PROXY_HOPS", 0)
+    if hops:
+        # Trust exactly this many proxies' X-Forwarded-For and -Proto headers
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=hops, x_proto=hops)  # type: ignore[method-assign]
 
     db.init_app(app)
     migrate.init_app(app, db)
