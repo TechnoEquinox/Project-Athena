@@ -15,6 +15,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from .extensions import db
 
 ROLES = ("admin", "manager", "navigator")
+CALL_STATUSES = ("needs_call", "needs_email", "needs_attention", "no_action_required", "outgoing")
 
 class SoftDeleteMixin:
     """Rows are hidden, not removed. Always query through Model.active()"""
@@ -88,9 +89,14 @@ appointment_device = db.Table(
     ),
 )
 
-
 class CallLog(SoftDeleteMixin, db.Model):
     __tablename__ = "call_log"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('needs_call', 'needs_email', 'needs_attention', 'no_action_required', 'outgoing')",
+            name="status_valid",
+        ),
+    )
 
     call_id: Mapped[int] = mapped_column(Identity(always=True), primary_key=True)
     client_id: Mapped[int | None] = mapped_column(
@@ -99,9 +105,12 @@ class CallLog(SoftDeleteMixin, db.Model):
     client_first_name: Mapped[str | None] = mapped_column(Text)
     client_last_name: Mapped[str | None] = mapped_column(Text)
     phone: Mapped[str | None] = mapped_column(Text)
-    called_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    called_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+    status: Mapped[str] = mapped_column(Text, server_default=text("'no_action_required'"))
+    tech_id: Mapped[int | None] = mapped_column(ForeignKey("tech.tech_id"), index=True)
     notes: Mapped[str | None] = mapped_column(Text)
-
 
 class ClientFeedback(db.Model):
     __tablename__ = "client_feedback"

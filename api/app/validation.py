@@ -1,5 +1,6 @@
 import re
 from datetime import datetime, timezone
+from .models import CALL_STATUSES
 
 EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
 ZIP_RE = re.compile(r"\d{5}")
@@ -139,17 +140,17 @@ def _int(value, field: str, *, low: int = 1, high: int | None = None) -> int:
     return value
 
 
-def _timestamp(value) -> datetime:
+def _timestamp(value, field: str = "appointment_at") -> datetime:
     if not isinstance(value, str):
-        raise ValidationError("appointment_at", "Must be a date and time.")
+        raise ValidationError(field, "Must be a date and time.")
     try:
         parsed = datetime.fromisoformat(value.strip())
     except ValueError:
         raise ValidationError(
-            "appointment_at", "Must be ISO 8601, like 2026-11-02T14:30:00-05:00."
+            field, "Must be ISO 8601, like 2026-11-02T14:30:00-05:00."
         ) from None
     if parsed.tzinfo is None:
-        raise ValidationError("appointment_at", "Must include a time zone offset.")
+        raise ValidationError(field, "Must include a time zone offset.")
     return parsed.astimezone(timezone.utc)
 
 
@@ -199,3 +200,30 @@ def clean_appointment(data: dict, *, partial: bool) -> dict:
     return _clean(
         data, cleaners, ("client_id", "appointment_at", "location_id", "length_minutes"), partial
     )
+
+def normalize_status(value) -> str | None:
+    """'NEEDS CALL', 'needs call' and 'needs_call' all become 'needs_call'. Junk becomes None."""
+    if not isinstance(value, str):
+        return None
+    key = "_".join(value.strip().lower().split())
+    return key if key in CALL_STATUSES else None
+
+def clean_status(value) -> str:
+    status = normalize_status(value)
+    if status is None:
+        raise ValidationError("status", "Must be one of: " + ", ".join(CALL_STATUSES) + ".")
+    return status
+
+CALL_CLEANERS = {
+    "called_at": lambda v: _timestamp(v, "called_at"),
+    "status": clean_status,
+    "client_id": lambda v: None if v is None else _int(v, "client_id"),
+    "client_first_name": _optional("client_first_name", 100),
+    "client_last_name": _optional("client_last_name", 100),
+    "phone": clean_phone,
+    "notes": clean_notes,
+    "tech_id": lambda v: _int(v, "tech_id"),
+}
+
+def clean_call(data: dict, *, partial: bool) -> dict:
+    return _clean(data, CALL_CLEANERS, ("status",), partial)
