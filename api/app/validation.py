@@ -1,4 +1,5 @@
 import re
+from datetime import datetime, timezone
 
 EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
 ZIP_RE = re.compile(r"\d{5}")
@@ -127,3 +128,74 @@ def clean_location(data: dict) -> dict:
     text = _text(data.get("name"), "name", required=True, max_len=100)
     assert text is not None
     return {"name": " ".join(text.split())}   # collapse runs of spaces
+
+def _int(value, field: str, *, low: int = 1, high: int | None = None) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValidationError(field, "Must be a whole number.")
+    if value < low or (high is not None and value > high):
+        raise ValidationError(
+            field, f"Must be between {low} and {high}." if high is not None else f"Must be at least {low}."
+        )
+    return value
+
+
+def _timestamp(value) -> datetime:
+    if not isinstance(value, str):
+        raise ValidationError("appointment_at", "Must be a date and time.")
+    try:
+        parsed = datetime.fromisoformat(value.strip())
+    except ValueError:
+        raise ValidationError(
+            "appointment_at", "Must be ISO 8601, like 2026-11-02T14:30:00-05:00."
+        ) from None
+    if parsed.tzinfo is None:
+        raise ValidationError("appointment_at", "Must include a time zone offset.")
+    return parsed.astimezone(timezone.utc)
+
+
+def clean_notes(value) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValidationError("notes", "Must be text.")
+    value = value.strip()
+    if not value:
+        return None
+    if len(value) > 5000:
+        raise ValidationError("notes", "Must be at most 5000 characters.")
+    if not all(ch.isprintable() or ch in "\n\r\t" for ch in value):
+        raise ValidationError("notes", "Contains invalid characters.")
+    return value
+
+
+def clean_device_ids(value) -> list[int]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise ValidationError("device_ids", "Must be a list.")
+    if len(value) > 10:
+        raise ValidationError("device_ids", "At most 10 devices.")
+    out: list[int] = []
+    for item in value:
+        item = _int(item, "device_ids")
+        if item not in out:
+            out.append(item)
+    return sorted(out)
+
+APPOINTMENT_CLEANERS = {
+    "client_id": lambda v: _int(v, "client_id"),
+    "appointment_at": _timestamp,
+    "location_id": lambda v: _int(v, "location_id"),
+    "length_minutes": lambda v: _int(v, "length_minutes", high=600),
+    "notes": clean_notes,
+    "tech_id": lambda v: _int(v, "tech_id"),
+    "device_ids": clean_device_ids,
+}
+
+def clean_appointment(data: dict, *, partial: bool) -> dict:
+    cleaners = dict(APPOINTMENT_CLEANERS)
+    if partial:
+        cleaners.pop("client_id")   # an appointment never moves to another client
+    return _clean(
+        data, cleaners, ("client_id", "appointment_at", "location_id", "length_minutes"), partial
+    )

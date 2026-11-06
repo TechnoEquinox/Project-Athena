@@ -68,7 +68,7 @@ class Appointment(SoftDeleteMixin, db.Model):
     client_id: Mapped[int] = mapped_column(ForeignKey("client.client_id"), index=True)
     tech_id: Mapped[int] = mapped_column(ForeignKey("tech.tech_id"), index=True)
     appointment_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
-    location: Mapped[str | None] = mapped_column(Text)
+    location_id: Mapped[int | None] = mapped_column(ForeignKey("location.location_id"), index=True)
     length_minutes: Mapped[int | None] = mapped_column(SmallInteger)
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

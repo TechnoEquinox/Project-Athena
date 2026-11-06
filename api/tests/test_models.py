@@ -22,7 +22,6 @@ def test_create_appointment(app):
             client_id=client.client_id,
             tech_id=tech.tech_id,
             appointment_at=datetime.now(timezone.utc),
-            location="Library",
             length_minutes=45,
         )
         db.session.add(appt)
