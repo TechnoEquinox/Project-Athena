@@ -190,3 +190,12 @@ class RecoveryCode(db.Model):
     code_hash: Mapped[str] = mapped_column(Text)                      # SHA-256, never the code itself
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+class Location(db.Model):
+    __tablename__ = "location"
+
+    location_id: Mapped[int] = mapped_column(Identity(always=True), primary_key=True)
+    name: Mapped[str] = mapped_column(Text)
+    name_key: Mapped[str] = mapped_column(Text, unique=True)   # casefolded name: case-insensitive uniqueness
+    is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())    

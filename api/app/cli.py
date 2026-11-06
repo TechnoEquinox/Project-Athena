@@ -11,6 +11,7 @@ from .auth.sessions import purge_expired, revoke_user_sessions
 from .auth.users import UserCreationError, create_user
 from .extensions import db
 from .models import ROLES, AppUser, Tech
+from .retention import purge_deleted, retention_days
 from . import audit
 
 
@@ -100,3 +101,18 @@ def register_cli(app):
         audit.record("user_totp_reset", target_type="user", target_id=user.user_id, detail={"via": "cli"})
         db.session.commit()
         click.echo(f"Removed two-factor for '{user.username}' and ended their current session.")
+
+    @app.cli.command("purge-deleted")
+    @click.option("--days", type=click.IntRange(min=1), default=None, help="Override the retention period (default: RETENTION_DAYS, normally 30).")
+    def purge_deleted_command(days):
+        """Permanently delete records soft-deleted longer ago than the retention period."""
+        days = days if days is not None else retention_days()
+        counts = purge_deleted(clock.now(), days)
+        if sum(counts.values()):
+            audit.record("retention_purge", detail={"via": "cli", "days": days, **counts})
+        db.session.commit()
+        click.echo(
+            f"Permanently deleted records older than {days} days: "
+            f"{counts['clients']} client(s), {counts['appointments']} appointment(s), "
+            f"{counts['call_logs']} call log(s), {counts['devices']} device(s)."
+        )

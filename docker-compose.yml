@@ -25,6 +25,7 @@ services:
       TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY}
       TOTP_REQUIRED_ROLES: ${TOTP_REQUIRED_ROLES:-admin,manager}
       PROXY_HOPS: "1"
+      RETENTION_DAYS: ${retention_days:-30}
     ports:
       - "127.0.0.1:8000:8000"    # localhost only
   

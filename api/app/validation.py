@@ -119,3 +119,11 @@ def clean_client(data: dict, *, partial: bool) -> dict:
 
 def clean_device(data: dict, *, partial: bool) -> dict:
     return _clean(data, DEVICE_CLEANERS, ("device_type",), partial)
+
+def clean_location(data: dict) -> dict:
+    for key in data:
+        if key != "name":
+            raise ValidationError(str(key), "Unknown field.")
+    text = _text(data.get("name"), "name", required=True, max_len=100)
+    assert text is not None
+    return {"name": " ".join(text.split())}   # collapse runs of spaces
