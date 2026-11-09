@@ -1,5 +1,5 @@
 import re
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from .models import CALL_STATUSES
 
 EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
@@ -227,3 +227,20 @@ CALL_CLEANERS = {
 
 def clean_call(data: dict, *, partial: bool) -> dict:
     return _clean(data, CALL_CLEANERS, ("status",), partial)
+
+def clean_start_date(value) -> date:
+    if not isinstance(value, str):
+        raise ValidationError("start_date", "Must be a date like 2026-11-09.")
+    try:
+        return date.fromisoformat(value.strip())
+    except ValueError:
+        raise ValidationError("start_date", "Must be a date like 2026-11-09.") from None
+
+TECH_CLEANERS = {
+    "first_name": _required("first_name", 100),
+    "last_name": _required("last_name", 100),
+    "start_date": clean_start_date,
+}
+
+def clean_tech(data: dict, *, partial: bool) -> dict:
+    return _clean(data, TECH_CLEANERS, ("first_name", "last_name", "start_date"), partial)
