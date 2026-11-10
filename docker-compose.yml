@@ -41,6 +41,7 @@ services:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data         # holds the CA's private key, so back it up
       - caddy_config:/config
+      - ./web/dist:/srv/athena:ro  # static files for the web frontend
   
   migrate:
     build: ./api
@@ -55,6 +56,18 @@ services:
     volumes:
       - ./api/migrations:/app/migrations   # so generated files land on the host
     command: ["flask", "db", "upgrade"]
+  
+  web:
+    image: node:22-alpine
+    profiles: ["tools"]
+    working_dir: /app
+    user: "1000:1000"
+    environment:
+      HOME: /tmp
+      npm_config_cache: /tmp/.npm
+    volumes:
+      - ./web:/app
+    command: ["npm", "run", "build"]
   
   test:
     build:
