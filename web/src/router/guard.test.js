@@ -31,4 +31,26 @@ describe('route guard', () => {
   it('lets users who owe 2FA setup reach the security page', () => {
     expect(decide({ meta: {}, name: 'security' }, { ...signedIn, mfaSetupRequired: true })).toBe(true)
   })
+
+  it('keeps non-admins off admin pages', () => {
+    expect(decide({ meta: { admin: true }, name: 'locations' }, { ...signedIn, isAdmin: false })).toEqual({
+      name: 'home',
+    })
+  })
+
+  it('lets admins into admin pages', () => {
+    expect(decide({ meta: { admin: true }, name: 'locations' }, { ...signedIn, isAdmin: true })).toBe(true)
+  })
+
+  it('sends signed-out users to login, even for admin pages', () => {
+    expect(
+      decide({ meta: { admin: true }, name: 'locations' }, { ...signedIn, isAuthenticated: false, isAdmin: false }),
+    ).toEqual({ name: 'login' })
+  })
+
+  it('still walks admins who owe 2FA setup to the security page', () => {
+    expect(
+      decide({ meta: { admin: true }, name: 'locations' }, { ...signedIn, isAdmin: true, mfaSetupRequired: true }),
+    ).toEqual({ name: 'security' })
+  })
 })

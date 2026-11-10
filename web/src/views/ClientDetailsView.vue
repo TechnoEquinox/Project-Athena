@@ -12,6 +12,9 @@ import DeviceFormDialog from '../components/DeviceFormDialog.vue'
 import { deleteClient, getClient, removeDevice } from '../clientsApi.js'
 import { formatDate, formatPhone } from '../lib/forms.js'
 import { useAuth } from '../stores/auth.js'
+import AppointmentFormDialog from '../components/AppointmentFormDialog.vue'
+import { listAppointments } from '../appointmentsApi'
+import { clientLabel, formatDateTime } from '../lib/appointments'
 
 const props = defineProps({ id: { type: String, required: true } })
 const auth = useAuth()
@@ -28,11 +31,27 @@ const editingDevice = ref(null)
 
 const confirm = ref({ open: false, kind: '', device: null, busy: false, error: '' })
 
+const appointments = ref([])
+const appointmentTotal = ref(0)
+const showAppointment = ref(false)
+
+async function loadAppointments() {
+  try {
+    const data = await listAppointments({ client_id: props.id, limit: 10, offset: 0 })
+    appointments.value = data.appointments
+    appointmentTotal.value = data.total
+  } catch {
+    appointments.value = []
+    appointmentTotal.value = 0
+  }
+}
+
 async function load() {
   loading.value = true
   error.value = ''
   notFound.value = false
   try {
+    loadAppointments()
     client.value = await getClient(props.id)
   } catch (err) {
     client.value = null
@@ -128,6 +147,32 @@ async function runConfirm() {
       </Column>
       <template #empty>No devices recorded.</template>
     </DataTable>
+    <div class="toolbar sectop">
+      <h3 class="grow">Appointments</h3>
+      <Button v-if="auth.canWrite" label="Log appointment" size="small" @click="showAppointment = true" />
+    </div>
+    <DataTable :value="appointments" data-key="appointment_id">
+      <Column header="When">
+        <template #body="{ data }">
+          <router-link :to="{ name: 'appointment', params: { id: data.appointment_id } }">
+            {{ formatDateTime(data.appointment_at) }}
+          </router-link>
+        </template>
+      </Column>
+      <Column header="Tech">
+        <template #body="{ data }">{{ data.tech.first_name }} {{ data.tech.last_name }}</template>
+      </Column>
+      <Column header="Location">
+        <template #body="{ data }">{{ data.location?.name ?? '' }}</template>
+      </Column>
+      <Column header="Length">
+        <template #body="{ data }">{{ data.length_minutes }} min</template>
+      </Column>
+      <template #empty>No appointments yet.</template>
+    </DataTable>
+    <p v-if="appointmentTotal > appointments.length" class="muted">
+      Showing the latest {{ appointments.length }} of {{ appointmentTotal }}.
+    </p>
 
     <ClientFormDialog v-model:visible="showEdit" :client="client" @saved="(updated) => (client = updated)" />
     <DeviceFormDialog
@@ -146,6 +191,11 @@ async function runConfirm() {
       :busy="confirm.busy"
       :error="confirm.error"
       @confirm="runConfirm"
+    />
+    <AppointmentFormDialog
+      v-model:visible="showAppointment"
+      :client="{ client_id: client.client_id, label: clientLabel(client) }"
+      @saved="loadAppointments"
     />
   </template>
 </template>

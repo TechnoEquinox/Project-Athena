@@ -21,3 +21,6 @@ body { margin: 0; font-family: system-ui, sans-serif; background: #f5f6f8; color
 .facts { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1.25rem; margin: 0; }
 .facts dt { font-weight: 600; color: #6b7280; }
 .facts dd { margin: 0; }
+.filters { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+.notes { white-space: pre-wrap; }
+.sectop { margin-top: 1.5rem; }

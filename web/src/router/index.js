@@ -6,6 +6,9 @@ import LoginView from '../views/LoginView.vue'
 import SecurityView from '../views/SecurityView.vue'
 import ClientsView from '../views/ClientsView.vue'
 import ClientDetailsView from '../views/ClientDetailsView.vue'
+import AppointmentsView from '../views/AppointmentsView.vue'
+import AppointmentDetailView from '../views/AppointmentDetailView.vue'
+import LocationsView from '../views/LocationsView.vue'
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -16,6 +19,9 @@ export const router = createRouter({
     { path: '/:pathMatch(.*)*', redirect: '/' },
     { path: '/clients', name: 'clients', component: ClientsView },
     { path: '/clients/:id(\\d+)', name: 'client', component: ClientDetailsView, props: true },
+    { path: '/appointments', name: 'appointments', component: AppointmentsView },
+    { path: '/appointments/:id(\\d+)', name: 'appointment', component: AppointmentDetailView, props: true },
+    { path: '/admin/locations', name: 'locations', component: LocationsView, meta: { admin: true } },
   ],
 })
 
