@@ -10,3 +10,14 @@ body { margin: 0; font-family: system-ui, sans-serif; background: #f5f6f8; color
 .mb { margin-bottom: 1rem; }
 .navlink { color: #374151; text-decoration: none; font-size: 0.9rem; }
 .navlink:hover { text-decoration: underline; }
+.head { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.head h2 { margin: 0.25rem 0; flex: 1; }
+.toolbar { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+.toolbar h2, .toolbar h3 { margin: 0; }
+.grow { flex: 1; }
+.row { display: flex; gap: 0.5rem; align-items: center; }
+.problem { color: #b91c1c; font-size: 0.85rem; }
+.muted { color: #6b7280; }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1.25rem; margin: 0; }
+.facts dt { font-weight: 600; color: #6b7280; }
+.facts dd { margin: 0; }

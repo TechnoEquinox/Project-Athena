@@ -4,6 +4,8 @@ import { decide } from './guard'
 import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue'
 import SecurityView from '../views/SecurityView.vue'
+import ClientsView from '../views/ClientsView.vue'
+import ClientDetailsView from '../views/ClientDetailsView.vue'
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -12,6 +14,8 @@ export const router = createRouter({
     { path: '/', name: 'home', component: HomeView },
     { path: '/security', name: 'security', component: SecurityView },
     { path: '/:pathMatch(.*)*', redirect: '/' },
+    { path: '/clients', name: 'clients', component: ClientsView },
+    { path: '/clients/:id(\\d+)', name: 'client', component: ClientDetailsView, props: true },
   ],
 })
 
