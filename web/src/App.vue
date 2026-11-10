@@ -16,6 +16,7 @@ async function signOut() {
   <header v-if="auth.isAuthenticated" class="topbar">
     <strong>Athena</strong>
     <span class="spacer" />
+    <router-link to="/security" class="navlink">Security</router-link>
     <span class="who">{{ auth.user.username }} · {{ auth.user.role }}</span>
     <Button label="Sign out" size="small" severity="secondary" text @click="signOut" />
   </header>

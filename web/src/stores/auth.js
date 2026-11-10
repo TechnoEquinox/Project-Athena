@@ -38,6 +38,37 @@ export const useAuth = defineStore('auth', {
       const body = recoveryCode ? { recovery_code: recoveryCode } : { code }
       this.accept(await api.post('/api/auth/login/totp', body))
     },
+    async changePassword(currentPassword, newPassword) {
+      // The server rotates the session, so the response carries a fresh cookie and CSRF token
+      this.accept(
+        await api.post('/api/auth/change-password', {
+          current_password: currentPassword,
+          new_password: newPassword,
+        }),
+      )
+    },
+    async startTotpSetup(currentPassword) {
+      // The secret goes straight to the caller and is never kept in the store
+      return api.post('/api/auth/totp/setup', { current_password: currentPassword })
+    },
+    async enableTotp(code) {
+      const data = await api.post('/api/auth/totp/enable', { code })
+      this.accept(data)
+      return data.recovery_codes
+    },
+    async disableTotp(currentPassword, { code, recoveryCode }) {
+      const second = recoveryCode ? { recovery_code: recoveryCode } : { code }
+      await api.post('/api/auth/totp/disable', { current_password: currentPassword, ...second })
+      this.user = { ...this.user, two_factor_enabled: false }
+    },
+    async regenerateRecoveryCodes(currentPassword, { code, recoveryCode }) {
+      const second = recoveryCode ? { recovery_code: recoveryCode } : { code }
+      const data = await api.post('/api/auth/totp/recovery-codes', {
+        current_password: currentPassword,
+        ...second,
+      })
+      return data.recovery_codes
+    },
     async logout() {
       try {
         await api.post('/api/auth/logout')

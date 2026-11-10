@@ -110,4 +110,71 @@ describe('auth store', () => {
       expect(auth.canWrite).toBe(expected)
     }
   })
+
+    it('takes the rotated CSRF token after a password change', async () => {
+    fetchMock
+      .mockReturnValueOnce(reply(200, SESSION))
+      .mockReturnValueOnce(reply(200, { ...SESSION, csrf_token: 'csrf-2' }))
+      .mockReturnValueOnce(reply(200, {}))
+    const auth = useAuth()
+    await auth.login('boss', 'pw')
+    await auth.changePassword('old pw', 'new password 123')
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({
+      current_password: 'old pw',
+      new_password: 'new password 123',
+    })
+    await api.post('/api/anything', {})
+    expect(fetchMock.mock.calls[2][1].headers['X-CSRF-Token']).toBe('csrf-2')
+  })
+
+  it('starts enrollment and returns the secret without storing it', async () => {
+    fetchMock.mockReturnValue(reply(200, { secret: 'ABC', otpauth_uri: 'otpauth://totp/x' }))
+    const auth = useAuth()
+    const result = await auth.startTotpSetup('pw')
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/auth/totp/setup')
+    expect(result.secret).toBe('ABC')
+    expect(JSON.stringify(auth.$state)).not.toContain('ABC')
+  })
+
+  it('finishes enrollment, clears the setup flag and returns the recovery codes', async () => {
+    fetchMock
+      .mockReturnValueOnce(reply(200, { ...SESSION, mfa_setup_required: true }))
+      .mockReturnValueOnce(
+        reply(200, {
+          user: { ...USER, two_factor_enabled: true },
+          csrf_token: 'csrf-1',
+          mfa_setup_required: false,
+          recovery_codes: ['aaaa-bbbb-cccc-dddd'],
+        }),
+      )
+    const auth = useAuth()
+    await auth.login('boss', 'pw')
+    expect(auth.mfaSetupRequired).toBe(true)
+    const codes = await auth.enableTotp('123456')
+    expect(codes).toEqual(['aaaa-bbbb-cccc-dddd'])
+    expect(auth.mfaSetupRequired).toBe(false)
+    expect(auth.user.two_factor_enabled).toBe(true)
+  })
+
+  it('disables two-factor with a password and a code', async () => {
+    fetchMock.mockReturnValueOnce(reply(200, { status: 'ok', two_factor_enabled: false }))
+    const auth = useAuth()
+    auth.user = { ...USER, two_factor_enabled: true }
+    await auth.disableTotp('pw', { code: '123456' })
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      current_password: 'pw',
+      code: '123456',
+    })
+    expect(auth.user.two_factor_enabled).toBe(false)
+  })
+
+  it('regenerates recovery codes with a recovery code as the second factor', async () => {
+    fetchMock.mockReturnValue(reply(200, { recovery_codes: ['x'] }))
+    const codes = await useAuth().regenerateRecoveryCodes('pw', { recoveryCode: 'abcd-efgh-ijkm-npqr' })
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      current_password: 'pw',
+      recovery_code: 'abcd-efgh-ijkm-npqr',
+    })
+    expect(codes).toEqual(['x'])
+  })
 })
