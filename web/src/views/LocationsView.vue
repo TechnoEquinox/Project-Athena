@@ -10,7 +10,7 @@ import Tag from 'primevue/tag'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import {
   createLocation, deactivateLocation, listLocations, reactivateLocation, renameLocation,
-} from '../locationsApi'
+} from '../locationsApi.js'
 
 const rows = ref([])
 const loading = ref(false)
