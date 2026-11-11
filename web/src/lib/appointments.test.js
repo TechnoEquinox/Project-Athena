@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildAppointmentPayload, deviceOptions, emptyAppointmentForm, locationOptions,
-  rangeToParams, techOptions, toApiTime, yearRange,
+  rangeToParams, techOptions, toApiTime, yearRange, techLabel
 } from './appointments'
 
 // Local-time dates, so the tests don't depend on the machine's time zone
@@ -204,5 +204,41 @@ describe('techOptions', () => {
       { tech_id: 1, label: 'Lee, Pat' },
       { tech_id: 9, label: 'Timer, Old (inactive)' },
     ])
+  })
+})
+
+describe('techLabel', () => {
+  const pat = { tech_id: 1, first_name: 'Pat', last_name: 'Lee' }
+
+  it('puts the last name first', () => {
+    expect(techLabel(pat)).toBe('Lee, Pat')
+  })
+
+  it('adds the role of their login', () => {
+    expect(techLabel({ ...pat, login_role: 'navigator' })).toBe('Lee, Pat - Navigator')
+    expect(techLabel({ ...pat, login_role: 'admin' })).toBe('Lee, Pat - Admin')
+    expect(techLabel({ ...pat, login_role: 'manager' })).toBe('Lee, Pat - Manager')
+  })
+
+  it('leaves the role off when the tech has no login', () => {
+    expect(techLabel({ ...pat, login_role: null })).toBe('Lee, Pat')
+  })
+
+  it('marks inactive techs', () => {
+    expect(techLabel({ ...pat, login_role: 'navigator', is_active: false })).toBe(
+      'Lee, Pat - Navigator (inactive)',
+    )
+  })
+
+  it('shows an unknown role as it is', () => {
+    expect(techLabel({ ...pat, login_role: 'auditor' })).toBe('Lee, Pat - auditor')
+  })
+
+  it('tells apart two techs with the same name', () => {
+    const labels = techOptions([
+      { tech_id: 1, first_name: 'Connor', last_name: 'Bailey', login_role: 'admin' },
+      { tech_id: 2, first_name: 'Connor', last_name: 'Bailey', login_role: 'navigator' },
+    ]).map((o) => o.label)
+    expect(labels).toEqual(['Bailey, Connor - Admin', 'Bailey, Connor - Navigator'])
   })
 })

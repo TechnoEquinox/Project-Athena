@@ -50,11 +50,11 @@ def add_tech(app, first="Pat", last="Lee", active=True):
         return row.tech_id
 
 
-def add_login(app, tech_id, username="kim", active=True):
+def add_login(app, tech_id, username="kim", active=True, role="navigator"):
     with app.app_context():
         user = AppUser(
             username=username, password_hash=hash_password(PASSWORD),
-            role="navigator", tech_id=tech_id, is_active=active,
+            role=role, tech_id=tech_id, is_active=active,
         )
         db.session.add(user)
         db.session.commit()
@@ -123,7 +123,7 @@ def test_list_sorted_and_hides_inactive_by_default(app, client, admin):
     resp = client.get(PUBLIC)
     assert [n for n in names(resp) if n[1] != "Igator"] == [("Amy", "Adams"), ("Zoe", "Young")]
     assert set(resp.get_json()["techs"][0]) == {
-        "tech_id", "first_name", "last_name", "start_date", "is_active",
+        "tech_id", "first_name", "last_name", "start_date", "is_active", "login_role",
     }
     assert "no-store" in resp.headers["Cache-Control"]
 
@@ -291,3 +291,26 @@ def test_reactivate_leaves_the_login_alone(app, client, admin):
 def test_unknown_tech(client, admin, method, suffix):
     resp = api(client, admin.csrf, method, f"{ADMIN}/9999{suffix}")
     assert resp.status_code == 404 and resp.get_json()["error"] == "not_found"
+
+def test_list_shows_the_role_of_each_techs_login(app, client, admin):
+    pat = add_tech(app, "Pat", "Lee")
+    add_login(app, pat, "pat", role="navigator")
+    ann = add_tech(app, "Ann", "Admin")
+    add_login(app, ann, "ann", role="admin")
+    mo = add_tech(app, "Mo", "Manager")
+    add_login(app, mo, "mo", role="manager")
+    add_tech(app, "Sam", "Ray")
+    roles = {t["first_name"]: t["login_role"] for t in client.get(PUBLIC).get_json()["techs"]}
+    assert roles["Pat"] == "navigator"
+    assert roles["Ann"] == "admin"
+    assert roles["Mo"] == "manager"
+    assert roles["Sam"] is None
+
+
+def test_other_responses_carry_the_login_role(app, client, admin):
+    tid = add_tech(app)
+    add_login(app, tid, "kim")
+    patched = api(client, admin.csrf, "PATCH", f"{ADMIN}/{tid}", {"first_name": "Patty"})
+    assert patched.get_json()["tech"]["login_role"] == "navigator"
+    created = api(client, admin.csrf, "POST", ADMIN, {**VALID, "first_name": "Zed"})
+    assert created.get_json()["tech"]["login_role"] is None

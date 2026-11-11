@@ -15,6 +15,10 @@ import { useAuth } from '../stores/auth.js'
 import AppointmentFormDialog from '../components/AppointmentFormDialog.vue'
 import { listAppointments } from '../appointmentsApi'
 import { clientLabel, formatDateTime } from '../lib/appointments'
+import Tag from 'primevue/tag'
+import CallFormDialog from '../components/CallFormDialog.vue'
+import { listCalls } from '../callsApi'
+import { statusSeverity } from '../lib/calls'
 
 const props = defineProps({ id: { type: String, required: true } })
 const auth = useAuth()
@@ -46,12 +50,29 @@ async function loadAppointments() {
   }
 }
 
+const calls = ref([])
+const callTotal = ref(0)
+const expandedCalls = ref({})
+const showCall = ref(false)
+
+async function loadCalls() {
+  try {
+    const data = await listCalls({ client_id: props.id, order: 'desc', limit: 100, offset: 0 })
+    calls.value = data.calls
+    callTotal.value = data.total
+  } catch {
+    calls.value = []
+    callTotal.value = 0
+  }
+}
+
 async function load() {
   loading.value = true
   error.value = ''
   notFound.value = false
   try {
     loadAppointments()
+    loadCalls()
     client.value = await getClient(props.id)
   } catch (err) {
     client.value = null
@@ -174,6 +195,39 @@ async function runConfirm() {
       Showing the latest {{ appointments.length }} of {{ appointmentTotal }}.
     </p>
 
+    <div class="toolbar sectop">
+      <h3 class="grow">Calls</h3>
+      <Button v-if="auth.canWrite" label="Log call" size="small" @click="showCall = true" />
+    </div>
+    <DataTable
+      v-model:expanded-rows="expandedCalls"
+      :value="calls"
+      data-key="call_id"
+      paginator
+      :rows="10"
+      :always-show-paginator="calls.length > 10"
+    >
+      <Column expander style="width: 3rem" />
+      <Column header="Received">
+        <template #body="{ data }">{{ formatDateTime(data.called_at) }}</template>
+      </Column>
+      <Column header="Status">
+        <template #body="{ data }">
+          <Tag :value="data.status_label" :severity="statusSeverity(data.status)" />
+        </template>
+      </Column>
+      <Column header="Tech">
+        <template #body="{ data }">{{ data.tech ? `${data.tech.first_name} ${data.tech.last_name}` : '' }}</template>
+      </Column>
+      <template #expansion="{ data }">
+        <p class="notes">{{ data.notes || 'No notes.' }}</p>
+      </template>
+      <template #empty>No calls linked to this client.</template>
+    </DataTable>
+    <p v-if="callTotal > calls.length" class="muted">
+      Showing the latest {{ calls.length }} of {{ callTotal }}.
+    </p>
+
     <ClientFormDialog v-model:visible="showEdit" :client="client" @saved="(updated) => (client = updated)" />
     <DeviceFormDialog
       v-model:visible="showDevice"
@@ -196,6 +250,11 @@ async function runConfirm() {
       v-model:visible="showAppointment"
       :client="{ client_id: client.client_id, label: clientLabel(client) }"
       @saved="loadAppointments"
+    />
+    <CallFormDialog
+      v-model:visible="showCall"
+      :client="{ client_id: client.client_id, label: clientLabel(client) }"
+      @saved="loadCalls"
     />
   </template>
 </template>

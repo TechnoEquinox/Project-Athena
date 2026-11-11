@@ -19,14 +19,18 @@ def no_store(response):
     response.headers["Cache-Control"] = "no-store"
     return response
 
+def _login_role(tech_id: int) -> str | None:
+    return db.session.scalar(select(AppUser.role).where(AppUser.tech_id == tech_id))
 
-def _json(t: Tech) -> dict:
+
+def _json(t: Tech, role: str | None = None) -> dict:
     return {
         "tech_id": t.tech_id,
         "first_name": t.first_name,
         "last_name": t.last_name,
         "start_date": t.start_date.isoformat(),
         "is_active": t.is_active,
+        "login_role": role,
     }
 
 
@@ -48,10 +52,14 @@ def list_techs():
     include_inactive = request.args.get("include_inactive", "false")
     if include_inactive not in ("true", "false"):
         return _bad_request()
-    stmt = select(Tech).order_by(Tech.last_name, Tech.first_name, Tech.tech_id)
+    stmt = (
+        select(Tech, AppUser.role)
+        .outerjoin(AppUser, AppUser.tech_id == Tech.tech_id)
+        .order_by(Tech.last_name, Tech.first_name, Tech.tech_id)
+    )
     if include_inactive == "false":
         stmt = stmt.where(Tech.is_active.is_(True))
-    return jsonify(techs=[_json(t) for t in db.session.scalars(stmt)])
+    return jsonify(techs=[_json(t, role) for t, role in db.session.execute(stmt).all()])
 
 
 @bp.post("/admin/techs")
@@ -113,7 +121,7 @@ def update_tech(tech_id):
     if changed:
         _record("tech_updated", tech, {"fields": sorted(changed)})
     db.session.commit()
-    return jsonify(tech=_json(tech))
+    return jsonify(tech=_json(tech, _login_role(tech_id)))
 
 
 @bp.delete("/admin/techs/<int:tech_id>")
@@ -137,7 +145,7 @@ def deactivate_tech(tech_id):
             revoke_challenges(login.user_id)
         _record("tech_deactivated", tech, {"login_deactivated": login_deactivated})
     db.session.commit()
-    return jsonify(tech=_json(tech), login_deactivated=login_deactivated)
+    return jsonify(tech=_json(tech, _login_role(tech_id)), login_deactivated=login_deactivated)
 
 
 @bp.post("/admin/techs/<int:tech_id>/reactivate")
@@ -151,4 +159,4 @@ def reactivate_tech(tech_id):
         tech.is_active = True
         _record("tech_reactivated", tech)
     db.session.commit()
-    return jsonify(tech=_json(tech))
+    return jsonify(tech=_json(tech, _login_role(tech_id)))

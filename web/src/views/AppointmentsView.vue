@@ -8,7 +8,7 @@ import DatePicker from 'primevue/datepicker'
 import Message from 'primevue/message'
 import Select from 'primevue/select'
 import AppointmentFormDialog from '../components/AppointmentFormDialog.vue'
-import { formatDateTime } from '../lib/appointments'
+import { formatDateTime, techLabel } from '../lib/appointments'
 import { listLocations } from '../locationsApi'
 import { useAppointments } from '../stores/appointments'
 import { useAuth } from '../stores/auth'
@@ -30,7 +30,7 @@ onMounted(async () => {
     listTechs({ includeInactive: true }).catch(() => []),
     listLocations({ includeInactive: true }).catch(() => []),
   ])
-  techs.value = t.map((x) => ({ tech_id: x.tech_id, label: `${x.last_name}, ${x.first_name}` }))
+    techs.value = t.map((x) => ({ tech_id: x.tech_id, label: techLabel(x) }))
   locations.value = l
 })
 

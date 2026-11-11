@@ -101,10 +101,17 @@ export function locationOptions(active = [], current = null) {
   return out
 }
 
+const ROLE_LABELS = { admin: 'Admin', manager: 'Manager', navigator: 'Navigator' }
+
+export function techLabel(t) {
+  const role = t.login_role ? ` - ${ROLE_LABELS[t.login_role] ?? t.login_role}` : ''
+  return `${t.last_name}, ${t.first_name}${role}${t.is_active === false ? ' (inactive)' : ''}`
+}
+
 export function techOptions(techs = [], current = null) {
-  const out = techs.map((t) => ({ tech_id: t.tech_id, label: `${t.last_name}, ${t.first_name}` }))
+  const out = techs.map((t) => ({ tech_id: t.tech_id, label: techLabel(t) }))
   if (current && !out.some((t) => t.tech_id === current.tech_id)) {
-    out.push({ tech_id: current.tech_id, label: `${current.last_name}, ${current.first_name} (inactive)` })
+    out.push({ tech_id: current.tech_id, label: techLabel({ ...current, is_active: false }) })
   }
   return out
 }
