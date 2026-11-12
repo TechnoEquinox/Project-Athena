@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, api, qs, setCsrf, setUnauthorizedHandler } from './api'
+import { ApiError, api, download, filenameFrom, qs, setCsrf, setUnauthorizedHandler } from './api'
 
 function reply(status, body) {
   return Promise.resolve({
@@ -109,5 +109,64 @@ describe('qs', () => {
   })
   it('encodes a plus sign so time zone offsets survive', () => {
     expect(qs({ from: '2026-01-15T10:00:00+05:00' })).toBe('?from=2026-01-15T10%3A00%3A00%2B05%3A00')
+  })
+})
+
+function fileReply(status, { disposition = null, json = null } = {}) {
+  return Promise.resolve({
+    ok: status >= 200 && status < 300,
+    status,
+    headers: { get: (name) => (name === 'Content-Disposition' ? disposition : null) },
+    blob: () => Promise.resolve('BLOB'),
+    json: () => (json === null ? Promise.reject(new Error('no body')) : Promise.resolve(json)),
+  })
+}
+
+describe('download', () => {
+  it('returns the file and the name the server chose, sending cookies but no CSRF header', async () => {
+    setCsrf('tok')
+    fetchMock.mockReturnValue(fileReply(200, { disposition: 'attachment; filename="report.csv"' }))
+    expect(await download('/api/stats/export?report=zips')).toEqual({ blob: 'BLOB', filename: 'report.csv' })
+    const [path, options] = fetchMock.mock.calls[0]
+    expect(path).toBe('/api/stats/export?report=zips')
+    expect(options.credentials).toBe('same-origin')
+    expect(options.headers).toBeUndefined()
+  })
+
+  it('has no filename when the server sent none', async () => {
+    fetchMock.mockReturnValue(fileReply(200))
+    expect((await download('/x')).filename).toBeNull()
+  })
+
+  it('throws an ApiError with the server message on a failure', async () => {
+    fetchMock.mockReturnValue(fileReply(400, { json: { error: 'bad_request', field: 'range' } }))
+    const err = await download('/x').catch((e) => e)
+    expect(err).toBeInstanceOf(ApiError)
+    expect(err.status).toBe(400)
+    expect(err.code).toBe('bad_request')
+  })
+
+  it('treats a 401 as an ended session', async () => {
+    const handler = vi.fn()
+    setUnauthorizedHandler(handler)
+    fetchMock.mockReturnValue(fileReply(401, { json: { error: 'authentication_required' } }))
+    await download('/x').catch(() => {})
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports a network failure as status 0', async () => {
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
+    const err = await download('/x').catch((e) => e)
+    expect(err.status).toBe(0)
+  })
+})
+
+describe('filenameFrom', () => {
+  it('reads a quoted filename', () => {
+    expect(filenameFrom('attachment; filename="a-b.csv"')).toBe('a-b.csv')
+  })
+  it('copes with nothing', () => {
+    expect(filenameFrom(null)).toBeNull()
+    expect(filenameFrom('attachment')).toBeNull()
   })
 })

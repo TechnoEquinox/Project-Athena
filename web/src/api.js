@@ -57,6 +57,33 @@ export async function request(method, path, body) {
   return data
 }
 
+/** Fetch a file (CSV). Cookies go along, and a 401 error is handled like any other request. */
+export async function download(path) {
+  let response
+  try {
+    response = await fetch(path, { credentials: 'same-origin' })
+  } catch {
+    throw new ApiError(0, { error: 'network', message: 'Cannot reach the server.' })
+  }
+  if (!response.ok) {
+    let data = null
+    try {
+      data = await response.json()
+    } catch {
+      data = null
+    }
+    const error = new ApiError(response.status, data)
+    if (response.status === 401) onUnauthorized(error)
+    throw error
+  }
+  return { blob: await response.blob(), filename: filenameFrom(response.headers.get('Content-Disposition')) }
+}
+
+export function filenameFrom(header) {
+  const match = /filename="([^"]+)"/.exec(header ?? '')
+  return match ? match[1] : null
+}
+
 export const api = {
   get: (path) => request('GET', path),
   post: (path, body = {}) => request('POST', path, body),

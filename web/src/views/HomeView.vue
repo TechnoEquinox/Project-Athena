@@ -24,6 +24,7 @@ onMounted(async () => {
     </router-link>
   </p>
   <p>
+    <router-link :to="{ name: 'dashboard' }">Dashboard</router-link> ·
     <router-link :to="{ name: 'clients' }">Clients</router-link> ·
     <router-link :to="{ name: 'appointments' }">Appointments</router-link> ·
     <router-link :to="{ name: 'calls' }">Calls</router-link>
