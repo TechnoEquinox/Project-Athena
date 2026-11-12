@@ -7,6 +7,8 @@ export const useAuth = defineStore('auth', {
     isAuthenticated: (state) => state.user !== null,
     isAdmin: (state) => state.user?.role === 'admin',
     canWrite: (state) => !!state.user && ['admin', 'navigator'].includes(state.user.role),
+    canViewAudit: (state) => !!state.user && ['admin', 'manager'].includes(state.user.role),
+    canViewAdmin: (state) => !!state.user && ['admin', 'manager'].includes(state.user.role),
   },
   actions: {
     accept(payload) {

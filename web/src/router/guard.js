@@ -4,5 +4,6 @@ export function decide(to, auth) {
   if (!auth.isAuthenticated) return { name: 'login' }
   if (auth.mfaSetupRequired && to.name !== 'security') return { name: 'security' }
   if (to.meta.admin && !auth.isAdmin) return { name: 'home' }
+  if (to.meta.roles && !to.meta.roles.includes(auth.user?.role)) return { name: 'home' }
   return true
 }

@@ -8,7 +8,7 @@ import ClientsView from '../views/ClientsView.vue'
 import ClientDetailsView from '../views/ClientDetailsView.vue'
 import AppointmentsView from '../views/AppointmentsView.vue'
 import AppointmentDetailView from '../views/AppointmentDetailView.vue'
-import LocationsView from '../views/LocationsView.vue'
+import AdminView from '../views/AdminView.vue'
 import CallsView from '../views/CallsView.vue'
 
 export const router = createRouter({
@@ -22,7 +22,7 @@ export const router = createRouter({
     { path: '/clients/:id(\\d+)', name: 'client', component: ClientDetailsView, props: true },
     { path: '/appointments', name: 'appointments', component: AppointmentsView },
     { path: '/appointments/:id(\\d+)', name: 'appointment', component: AppointmentDetailView, props: true },
-    { path: '/admin/locations', name: 'locations', component: LocationsView, meta: { admin: true } },
+    { path: '/admin/:tab?', name: 'admin', component: AdminView, meta: { roles: ['admin', 'manager'] } },
     { path: '/calls', name: 'calls', component: CallsView },
   ],
 })

@@ -100,7 +100,7 @@ async function reactivate(loc) {
 </script>
 
 <template>
-  <h2>Locations</h2>
+  <h3>Locations</h3>
   <p class="muted">Where appointments happen. Removing a location hides it from new appointments, and old appointments keep it.</p>
 
   <Message v-if="notice" severity="success" :closable="false" class="mb">{{ notice }}</Message>

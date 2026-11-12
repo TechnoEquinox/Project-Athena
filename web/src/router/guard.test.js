@@ -53,4 +53,17 @@ describe('route guard', () => {
       decide({ meta: { admin: true }, name: 'locations' }, { ...signedIn, isAdmin: true, mfaSetupRequired: true }),
     ).toEqual({ name: 'security' })
   })
+
+  it('lets listed roles into role-limited pages and keeps the rest out', () => {
+    const page = { meta: { roles: ['admin', 'manager'] }, name: 'admin' }
+    expect(decide(page, { ...signedIn, user: { role: 'manager' } })).toBe(true)
+    expect(decide(page, { ...signedIn, user: { role: 'admin' } })).toBe(true)
+    expect(decide(page, { ...signedIn, user: { role: 'navigator' } })).toEqual({ name: 'home' })
+  })
+
+  it('sends signed-out users to login for role-limited pages', () => {
+    expect(
+      decide({ meta: { roles: ['admin'] }, name: 'admin' }, { ...signedIn, isAuthenticated: false, user: null }),
+    ).toEqual({ name: 'login' })
+  })
 })

@@ -177,4 +177,22 @@ describe('auth store', () => {
     })
     expect(codes).toEqual(['x'])
   })
+
+  it('knows who can view the audit log', () => {
+    const auth = useAuth()
+    expect(auth.canViewAudit).toBe(false)
+    for (const [role, expected] of [['admin', true], ['manager', true], ['navigator', false]]) {
+      auth.user = { ...USER, role }
+      expect(auth.canViewAudit).toBe(expected)
+    }
+  })
+
+  it('knows who can see the admin area', () => {
+    const auth = useAuth()
+    expect(auth.canViewAdmin).toBe(false)
+    for (const [role, expected] of [['admin', true], ['manager', true], ['navigator', false]]) {
+      auth.user = { ...USER, role }
+      expect(auth.canViewAdmin).toBe(expected)
+    }
+  })
 })

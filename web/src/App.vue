@@ -18,7 +18,7 @@ async function signOut() {
     <router-link to="/clients" class="navlink">Clients</router-link>
     <router-link to="/appointments" class="navlink">Appointments</router-link>
     <router-link to="/calls" class="navlink">Calls</router-link>
-    <router-link v-if="auth.isAdmin" to="/admin/locations" class="navlink">Locations</router-link>
+    <router-link v-if="auth.canViewAdmin" to="/admin" class="navlink">Admin</router-link>
     <span class="spacer" />
     <router-link to="/security" class="navlink">Security</router-link>
     <span class="who">{{ auth.user.username }} · {{ auth.user.role }}</span>
