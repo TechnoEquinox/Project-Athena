@@ -1,10 +1,27 @@
 import os
+from zoneinfo import ZoneInfo
 
 def _encryption_keys() -> list[str]:
     keys = [k.strip() for k in os.environ["TOTP_ENCRYPTION_KEY"].split(",") if k.strip()]
     if not keys:
         raise RuntimeError("TOTP_ENCRYPTION_KEY is empty")
     return keys
+
+def parse_timezone(name: str) -> str:
+    try:
+        ZoneInfo(name)
+    except (KeyError, ValueError):
+        raise RuntimeError(f"LIBRARY_TIMEZONE {name!r} is not a valid time zone name") from None
+    return name
+
+def parse_fiscal_month(text: str) -> int:
+    try:
+        month = int(text)
+    except ValueError:
+        month = 0
+    if not 1 <= month <= 12:
+        raise RuntimeError("FISCAL_YEAR_START_MONTH must be a number from 1 to 12")
+    return month
 
 class Config:
     SQLALCHEMY_DATABASE_URI = os.environ["DATABASE_URL"]
@@ -16,3 +33,5 @@ class Config:
     )
     PROXY_HOPS = int(os.environ.get("PROXY_HOPS", "0"))
     RETENTION_DAYS = max(1, int(os.environ.get("RETENTION_DAYS", "30")))
+    LIBRARY_TIMEZONE = parse_timezone(os.environ.get("LIBRARY_TIMEZONE", "America/New_York"))
+    FISCAL_YEAR_START_MONTH = parse_fiscal_month(os.environ.get("FISCAL_YEAR_START_MONTH", "7"))

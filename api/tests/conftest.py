@@ -23,6 +23,8 @@ class TestConfig:
     TOTP_ENCRYPTION_KEYS = [Fernet.generate_key().decode()]
     TOTP_REQUIRED_ROLES = ()
     PROXY_HOPS = 0
+    LIBRARY_TIMEZONE = "America/New_York"
+    FISCAL_YEAR_START_MONTH = 7
 
 class ProxiedConfig(TestConfig):
     PROXY_HOPS = 1
