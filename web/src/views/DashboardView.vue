@@ -7,7 +7,7 @@ import DataTable from 'primevue/datatable'
 import Message from 'primevue/message'
 import ChartCard from '../components/ChartCard.vue'
 import DashboardControls from '../components/DashboardControls.vue'
-import { counterCards } from '../lib/dashboard'
+import { counterCards, greeting } from '../lib/dashboard'
 import {
   appointmentRows, appointmentsChart, appointmentsEmpty, axisOptions, callRows, callsChart,
   callsEmpty, devicesChart, devicesEmpty, formatMinutes, locationsChart, locationsEmpty,
@@ -16,13 +16,26 @@ import {
 import { downloadReport } from '../statsApi'
 import { useDashboard } from '../stores/dashboard'
 import ConnecticutMap from '../components/ConnecticutMap.vue'
+import { listCalls } from '../callsApi'
+import { useAuth } from '../stores/auth'
 
 const store = useDashboard()
 const perTech = computed(() => store.mode === 'tech')
 const exporting = ref('')
 const exportError = ref('')
 
-onMounted(() => store.init())
+const auth = useAuth()
+const greetingText = greeting(new Date(), auth.user?.username)
+const waiting = ref(null)
+
+onMounted(async () => {
+  store.init()
+  try {
+    waiting.value = (await listCalls({ open: true, limit: 1, offset: 0 })).total
+  } catch {
+    waiting.value = null   // not worth an error on the home page
+  }
+})
 
 const cards = computed(() => counterCards(store.counters))
 
@@ -57,7 +70,13 @@ async function exportReport(report) {
 </script>
 
 <template>
-  <h2>Dashboard</h2>
+  <h2>{{ greetingText }}</h2>
+  <p v-if="waiting" class="waiting">
+    <router-link :to="{ name: 'calls' }">
+      {{ waiting }} call{{ waiting === 1 ? '' : 's' }} waiting for a response
+    </router-link>
+  </p>
+  <p v-else-if="waiting === 0" class="waiting muted">No calls are waiting for a response.</p>
   <DashboardControls />
 
   <Message v-if="store.error" severity="error" :closable="false" class="mb">{{ store.error }}</Message>

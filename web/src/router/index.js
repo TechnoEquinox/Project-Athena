@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '../stores/auth'
 import { decide } from './guard'
-import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue'
 import SecurityView from '../views/SecurityView.vue'
 import ClientsView from '../views/ClientsView.vue'
@@ -16,7 +15,7 @@ export const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/login', name: 'login', component: LoginView, meta: { public: true } },
-    { path: '/', name: 'home', component: HomeView },
+    { path: '/', name: 'home', component: DashboardView },
     { path: '/security', name: 'security', component: SecurityView },
     { path: '/:pathMatch(.*)*', redirect: '/' },
     { path: '/clients', name: 'clients', component: ClientsView },
@@ -25,7 +24,7 @@ export const router = createRouter({
     { path: '/appointments/:id(\\d+)', name: 'appointment', component: AppointmentDetailView, props: true },
     { path: '/admin/:tab?', name: 'admin', component: AdminView, meta: { roles: ['admin', 'manager'] } },
     { path: '/calls', name: 'calls', component: CallsView },
-    { path: '/dashboard', name: 'dashboard', component: DashboardView },
+    { path: '/dashboard', redirect: { name: 'home' } },
   ],
 })
 

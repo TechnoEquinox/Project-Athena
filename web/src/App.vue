@@ -14,8 +14,8 @@ async function signOut() {
 
 <template>
   <header v-if="auth.isAuthenticated" class="topbar">
-    <strong>Athena</strong>
-    <router-link to="/dashboard" class="navlink">Dashboard</router-link>
+    <router-link :to="{ name: 'home' }" class="brand">Athena</router-link>
+    <router-link :to="{ name: 'home' }" class="navlink">Dashboard</router-link>
     <router-link to="/clients" class="navlink">Clients</router-link>
     <router-link to="/appointments" class="navlink">Appointments</router-link>
     <router-link to="/calls" class="navlink">Calls</router-link>

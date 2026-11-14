@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { useDashboard } from './dashboard'
+import { useDashboard, greeting } from './dashboard'
 
 function response(status, body) {
   return { ok: status >= 200 && status < 300, status, json: () => Promise.resolve(body) }
@@ -208,5 +208,27 @@ describe('dashboard store', () => {
     await first
     expect(store.appointments).toEqual({ tag: 'appointments' })
     expect(store.loading).toBe(false)
+  })
+})
+describe('greeting', () => {
+  const at = (hour, minute = 0) => new Date(2026, 10, 14, hour, minute)
+
+  it.each([
+    [5, 0, 'Good Morning, connor'],
+    [9, 30, 'Good Morning, connor'],
+    [11, 59, 'Good Morning, connor'],
+    [12, 0, 'Good Afternoon, connor'],
+    [16, 59, 'Good Afternoon, connor'],
+    [17, 0, 'Good Evening, connor'],
+    [23, 59, 'Good Evening, connor'],
+    [0, 0, 'Good Evening, connor'],
+    [4, 59, 'Good Evening, connor'],
+  ])('at %i:%i says %s', (hour, minute, expected) => {
+    expect(greeting(at(hour, minute), 'connor')).toBe(expected)
+  })
+
+  it('leaves the name off when there is none', () => {
+    expect(greeting(at(9), '')).toBe('Good Morning')
+    expect(greeting(at(9), undefined)).toBe('Good Morning')
   })
 })
