@@ -15,6 +15,7 @@ import {
 } from '../lib/charts'
 import { downloadReport } from '../statsApi'
 import { useDashboard } from '../stores/dashboard'
+import ConnecticutMap from '../components/ConnecticutMap.vue'
 
 const store = useDashboard()
 const perTech = computed(() => store.mode === 'tech')
@@ -29,6 +30,7 @@ const apptEmpty = computed(() => appointmentsEmpty(store.appointments))
 const callEmpty = computed(() => callsEmpty(store.calls))
 const locEmpty = computed(() => locationsEmpty(store.locations))
 const devEmpty = computed(() => devicesEmpty(store.devices))
+const zipsEmpty = computed(() => !store.zips || store.zips.total_clients === 0)
 
 const countOptions = computed(() => axisOptions({ legend: perTech.value, integer: true }))
 const paceOptions = computed(() => axisOptions({ legend: perTech.value, yTitle: 'Minutes' }))
@@ -199,6 +201,17 @@ async function exportReport(report) {
         {{ store.devices.total_devices }} device visit(s) across {{ store.devices.appointments }} appointment(s).
         {{ store.devices.appointments_without_devices }} appointment(s) had no device recorded.
       </p>
+    </ChartCard>
+    <ChartCard
+      class="wide"
+      title="Where clients live"
+      :loading="store.loading"
+      :empty="zipsEmpty"
+      empty-text="No clients had appointments in this range."
+      :exporting="exporting === 'zips'"
+      @export="exportReport('zips')"
+    >
+      <ConnecticutMap :report="store.zips" />
     </ChartCard>
   </div>
 </template>

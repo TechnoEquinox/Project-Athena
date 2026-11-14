@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { formatYmd } from '../lib/admin'
 import { matchPreset, presetOptions, presetRange, rangeProblem } from '../lib/dashboard'
 import {
-  getAppointmentsReport, getCallsReport, getCounters, getDevicesReport, getLocationsReport,
+  getAppointmentsReport, getCallsReport, getCounters, getDevicesReport, getLocationsReport, getZipsReport
 } from '../statsApi'
 
 // Only the newest request may update the charts
@@ -24,6 +24,7 @@ export const useDashboard = defineStore('dashboard', {
     calls: null,
     locations: null,
     devices: null,
+    zips: null,
     loading: false,
     error: '',
     rangeError: '',
@@ -56,14 +57,15 @@ export const useDashboard = defineStore('dashboard', {
       const range = { from: this.from, to: this.to }
       const grouped = { ...range, interval: this.interval }
       try {
-        const [appointments, calls, locations, devices] = await Promise.all([
+        const [appointments, calls, locations, devices, zips] = await Promise.all([
           getAppointmentsReport(grouped),
           getCallsReport(grouped),
           getLocationsReport(grouped),
           getDevicesReport(range),
+          getZipsReport(range),
         ])
         if (mine !== sequence) return
-        this.$patch({ appointments, calls, locations, devices })
+        this.$patch({ appointments, calls, locations, devices, zips })
       } catch (err) {
         if (mine !== sequence) return
         this.error = err.message

@@ -21,3 +21,5 @@ export async function downloadReport(report, params) {
   const { blob, filename } = await download(reportUrl(report, params))
   saveFile(blob, filename ?? `athena-${report}.csv`)
 }
+
+export const getZipsReport = ({ from, to }) => api.get(`/api/stats/zips${qs({ from, to })}`)

@@ -29,6 +29,7 @@ const BODIES = {
   '/api/stats/calls': { tag: 'calls' },
   '/api/stats/locations': { tag: 'locations' },
   '/api/stats/devices': { tag: 'devices' },
+  '/api/stats/zips': { tag: 'zips' },
 }
 
 let fetchMock
@@ -65,6 +66,7 @@ describe('dashboard store', () => {
       '/api/stats/calls?from=2026-01-01&to=2026-12-31&interval=month',
       '/api/stats/devices?from=2026-01-01&to=2026-12-31',
       '/api/stats/locations?from=2026-01-01&to=2026-12-31&interval=month',
+      '/api/stats/zips?from=2026-01-01&to=2026-12-31',
     ])
   })
 
@@ -85,6 +87,7 @@ describe('dashboard store', () => {
     expect(store.devices).toEqual({ tag: 'devices' })
     expect(store.loading).toBe(false)
     expect(store.error).toBe('')
+    expect(store.zips).toEqual({ tag: 'zips' })
   })
 
   it("falls back to the browser's date when the counters cannot load", async () => {
@@ -96,7 +99,7 @@ describe('dashboard store', () => {
     expect(store.countersError).toBe('Request failed (500)')
     expect(store.counters).toBeNull()
     expect(store.from).toBe('2026-01-01')
-    expect(reportUrls()).toHaveLength(4)
+    expect(reportUrls()).toHaveLength(5)
     expect(store.appointments).toEqual({ tag: 'appointments' })
   })
 
@@ -194,7 +197,7 @@ describe('dashboard store', () => {
   it('ignores a slow answer to an older request', async () => {
     serve()
     const older = deferred()
-    for (let i = 0; i < 4; i++) fetchMock.mockReturnValueOnce(older.promise)
+    for (let i = 0; i < 5; i++) fetchMock.mockReturnValueOnce(older.promise)
     const store = useDashboard()
     store.from = '2026-01-01'
     store.to = '2026-12-31'

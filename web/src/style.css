@@ -38,3 +38,14 @@ body { margin: 0; font-family: system-ui, sans-serif; background: #f5f6f8; color
 .chart-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; }
 .chart-pair h4 { margin: 0 0 0.5rem; }
 .big { font-size: 1.6rem; font-weight: 700; margin: 0 0 0.75rem; }
+.dash-grid .wide { grid-column: 1 / -1; }
+.map-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(14rem, 1fr); gap: 1.25rem; }
+@media (max-width: 60rem) { .map-layout { grid-template-columns: 1fr; } }
+.map-wrap { position: relative; background: #f3f6fa; border-radius: 8px; }
+.map-wrap svg { display: block; width: 100%; height: auto; }
+.zip { stroke: #ffffff; stroke-width: 0.6; }
+.zip.live { stroke: #1f2937; stroke-width: 0.8; cursor: pointer; }
+.zip:hover, .zip:focus { stroke: #000000; stroke-width: 2.2; outline: none; }
+.map-tip { position: absolute; transform: translate(12px, -115%); background: #111827; color: #ffffff; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.85rem; pointer-events: none; white-space: nowrap; }
+.legend { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; font-size: 0.85rem; }
+.swatch { display: inline-block; width: 1rem; height: 1rem; border-radius: 3px; border: 1px solid #9ca3af; vertical-align: middle; margin-right: 0.3rem; }

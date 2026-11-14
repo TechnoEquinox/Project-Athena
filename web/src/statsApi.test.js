@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { setCsrf } from './api'
 import {
   downloadReport, getAppointmentsReport, getCallsReport, getCounters, getDevicesReport,
-  getLocationsReport, reportUrl,
+  getLocationsReport, reportUrl, getZipsReport,
 } from './statsApi'
 import { saveFile } from './lib/download'
 
@@ -50,6 +50,12 @@ describe('stats API', () => {
     fetchMock.mockReturnValue(reply(200, {}))
     await getDevicesReport({ ...RANGE, interval: 'quarter' })
     expect(url()).toBe('/api/stats/devices?from=2026-01-01&to=2026-12-31')
+  })
+
+  it('loads the zip report without a grouping', async () => {
+    fetchMock.mockReturnValue(reply(200, {}))
+    await getZipsReport({ ...RANGE, interval: 'quarter' })
+    expect(url()).toBe('/api/stats/zips?from=2026-01-01&to=2026-12-31')
   })
 
   it('builds the export address', () => {
