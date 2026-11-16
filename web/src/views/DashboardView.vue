@@ -7,11 +7,13 @@ import DataTable from 'primevue/datatable'
 import Message from 'primevue/message'
 import ChartCard from '../components/ChartCard.vue'
 import DashboardControls from '../components/DashboardControls.vue'
-import { counterCards, greeting } from '../lib/dashboard'
+import { counterCards } from '../lib/dashboard'
+import { greeting } from '../lib/greeting'
 import {
   appointmentRows, appointmentsChart, appointmentsEmpty, axisOptions, callRows, callsChart,
   callsEmpty, devicesChart, devicesEmpty, formatMinutes, locationsChart, locationsEmpty,
-  paceChart, pieOptions,
+  paceChart, pieOptions, languageSummary, languagesChart, languagesEmpty, languagesHeight, 
+  languagesOptions, topLanguages,
 } from '../lib/charts'
 import { downloadReport } from '../statsApi'
 import { useDashboard } from '../stores/dashboard'
@@ -55,6 +57,15 @@ const inboundData = computed(() => (callEmpty.value ? null : callsChart(store.ca
 const outboundData = computed(() => (callEmpty.value ? null : callsChart(store.calls, 'outbound', store.mode)))
 const locationData = computed(() => (locEmpty.value ? null : locationsChart(store.locations)))
 const deviceData = computed(() => (devEmpty.value ? null : devicesChart(store.devices)))
+
+const languageOptions = languagesOptions()
+const langEmpty = computed(() => languagesEmpty(store.languages))
+const languageData = computed(() => (langEmpty.value ? null : languagesChart(store.languages)))
+const langSummary = computed(() => (langEmpty.value ? null : languageSummary(store.languages)))
+const langHidden = computed(() => (langEmpty.value ? 0 : topLanguages(store.languages).hidden))
+const langHeight = computed(() =>
+  langEmpty.value ? 12 : languagesHeight(Math.min(store.languages.languages.length, 12)),
+)
 
 async function exportReport(report) {
   exportError.value = ''
@@ -219,6 +230,28 @@ async function exportReport(report) {
       <p class="muted">
         {{ store.devices.total_devices }} device visit(s) across {{ store.devices.appointments }} appointment(s).
         {{ store.devices.appointments_without_devices }} appointment(s) had no device recorded.
+      </p>
+    </ChartCard>
+    <ChartCard
+      title="Languages spoken"
+      :loading="store.loading"
+      :empty="langEmpty"
+      empty-text="No languages were recorded in this range."
+      :exporting="exporting === 'languages'"
+      @export="exportReport('languages')"
+    >
+      <div class="chart" :style="{ height: `${langHeight}rem` }">
+        <Chart
+          type="bar"
+          :data="languageData"
+          :options="languageOptions"
+          :canvas-props="{ role: 'img', 'aria-label': 'Bar chart of the languages clients speak' }"
+        />
+      </div>
+      <p class="muted">
+        {{ langSummary.multilingual }} of {{ langSummary.total }} client(s) ({{ langSummary.multilingualPct }}%)
+        speak more than one language. {{ langSummary.noLanguage }} have no language recorded.
+        <span v-if="langHidden">The {{ langHidden }} least common language(s) are in the CSV.</span>
       </p>
     </ChartCard>
     <ChartCard

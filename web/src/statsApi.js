@@ -23,3 +23,5 @@ export async function downloadReport(report, params) {
 }
 
 export const getZipsReport = ({ from, to }) => api.get(`/api/stats/zips${qs({ from, to })}`)
+
+export const getLanguagesReport = ({ from, to }) => api.get(`/api/stats/languages${qs({ from, to })}`)

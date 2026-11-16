@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { formatYmd } from '../lib/admin'
 import { matchPreset, presetOptions, presetRange, rangeProblem } from '../lib/dashboard'
 import {
-  getAppointmentsReport, getCallsReport, getCounters, getDevicesReport, getLocationsReport, getZipsReport
+  getAppointmentsReport, getCallsReport, getCounters, getDevicesReport, getLocationsReport, getZipsReport, getLanguagesReport
 } from '../statsApi'
 
 // Only the newest request may update the charts
@@ -25,6 +25,7 @@ export const useDashboard = defineStore('dashboard', {
     locations: null,
     devices: null,
     zips: null,
+    languages: null,
     loading: false,
     error: '',
     rangeError: '',
@@ -57,15 +58,21 @@ export const useDashboard = defineStore('dashboard', {
       const range = { from: this.from, to: this.to }
       const grouped = { ...range, interval: this.interval }
       try {
-        const [appointments, calls, locations, devices, zips] = await Promise.all([
+          const [appointments, calls, locations, devices, zips, languages] = await Promise.all([
           getAppointmentsReport(grouped),
           getCallsReport(grouped),
           getLocationsReport(grouped),
           getDevicesReport(range),
           getZipsReport(range),
+          getLanguagesReport(range),
         ])
+        
+        if (mine !== sequence) return
+        this.$patch({ appointments, calls, locations, devices, zips, languages })
+        
         if (mine !== sequence) return
         this.$patch({ appointments, calls, locations, devices, zips })
+
       } catch (err) {
         if (mine !== sequence) return
         this.error = err.message
@@ -102,9 +109,3 @@ export const useDashboard = defineStore('dashboard', {
     },
   },
 })
-
-export function greeting(now, name) {
-  const hour = now.getHours()
-  const part = hour >= 5 && hour < 12 ? 'Morning' : hour >= 12 && hour < 17 ? 'Afternoon' : 'Evening'
-  return name ? `Good ${part}, ${name}` : `Good ${part}`
-}

@@ -17,7 +17,7 @@ from .models import (
 bp = Blueprint("stats", __name__, url_prefix="/api/stats")
 
 READERS = ("admin", "manager", "navigator")
-REPORTS = ("appointments", "calls", "locations", "devices", "zips")
+REPORTS = ("appointments", "calls", "locations", "devices", "zips", "languages")
 
 
 @bp.after_request
@@ -243,6 +243,52 @@ def _zips_report(s):
         "total_clients": sum(z["clients"] for z in zips) + other + no_zip,
     }
 
+def _languages_report(s):
+    clients = db.session.execute(
+        select(Client.client_id, Client.languages).where(
+            Client.deleted_at.is_(None),
+            Client.client_id.in_(
+                select(Appointment.client_id).where(
+                    Appointment.deleted_at.is_(None), *_when(Appointment.appointment_at, s)
+                )
+            ),
+        )
+    ).all()
+
+    merged = {}   # "english" and "English" are one language
+    no_language = multilingual = 0
+    for _client_id, spoken in clients:
+        seen = {}
+        for text in spoken or []:
+            spelling = " ".join(str(text).split())
+            if spelling and spelling.casefold() not in seen:
+                seen[spelling.casefold()] = spelling   # a client's own duplicates count once
+        if not seen:
+            no_language += 1
+            continue
+        if len(seen) > 1:
+            multilingual += 1
+        for key, spelling in seen.items():
+            entry = merged.setdefault(key, {"spellings": {}, "count": 0})
+            entry["spellings"][spelling] = entry["spellings"].get(spelling, 0) + 1
+            entry["count"] += 1
+
+    languages = [
+        {
+            "language": sorted(e["spellings"].items(), key=lambda kv: (-kv[1], kv[0]))[0][0],
+            "clients": e["count"],
+        }
+        for e in merged.values()
+    ]
+    languages.sort(key=lambda x: (-x["clients"], x["language"].casefold()))
+    return {
+        "from": s.start.isoformat(), "to": s.end.isoformat(),
+        "languages": languages,
+        "no_language": no_language,
+        "multilingual_clients": multilingual,
+        "total_clients": len(clients),
+    }
+
 
 # ---------- endpoints ----------
 
@@ -284,7 +330,7 @@ def _endpoint(report):
 
 for _name_, _report in (
     ("appointments", _appointments_report), ("calls", _calls_report),
-    ("locations", _locations_report), ("devices", _devices_report), ("zips", _zips_report),
+    ("locations", _locations_report), ("devices", _devices_report), ("zips", _zips_report), ("languages", _languages_report)
 ):
     view = _endpoint(_report)
     view.__name__ = _name_
@@ -338,6 +384,12 @@ def _export_table(report: str, s):
     if report == "devices":
         data = _devices_report(s)
         return ["device_type", "count"], [[d["device_type"], d["count"]] for d in data["devices"]]
+
+    if report == "languages":
+        data = _languages_report(s)
+        rows = [[entry["language"], entry["clients"]] for entry in data["languages"]]
+        rows.append(["Not recorded", data["no_language"]])
+        return ["language", "clients"], rows
 
     data = _zips_report(s)   # zips: every count, nothing hidden
     rows = [[z["zipcode"], z["clients"]] for z in data["zips"]]

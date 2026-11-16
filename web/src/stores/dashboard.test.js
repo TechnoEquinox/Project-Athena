@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { useDashboard, greeting } from './dashboard'
+import { useDashboard } from './dashboard'
 
 function response(status, body) {
   return { ok: status >= 200 && status < 300, status, json: () => Promise.resolve(body) }
@@ -30,6 +30,7 @@ const BODIES = {
   '/api/stats/locations': { tag: 'locations' },
   '/api/stats/devices': { tag: 'devices' },
   '/api/stats/zips': { tag: 'zips' },
+  '/api/stats/languages': { tag: 'languages' },
 }
 
 let fetchMock
@@ -65,6 +66,7 @@ describe('dashboard store', () => {
       '/api/stats/appointments?from=2026-01-01&to=2026-12-31&interval=month',
       '/api/stats/calls?from=2026-01-01&to=2026-12-31&interval=month',
       '/api/stats/devices?from=2026-01-01&to=2026-12-31',
+      '/api/stats/languages?from=2026-01-01&to=2026-12-31',
       '/api/stats/locations?from=2026-01-01&to=2026-12-31&interval=month',
       '/api/stats/zips?from=2026-01-01&to=2026-12-31',
     ])
@@ -88,6 +90,7 @@ describe('dashboard store', () => {
     expect(store.loading).toBe(false)
     expect(store.error).toBe('')
     expect(store.zips).toEqual({ tag: 'zips' })
+    expect(store.languages).toEqual({ tag: 'languages' })
   })
 
   it("falls back to the browser's date when the counters cannot load", async () => {
@@ -99,7 +102,7 @@ describe('dashboard store', () => {
     expect(store.countersError).toBe('Request failed (500)')
     expect(store.counters).toBeNull()
     expect(store.from).toBe('2026-01-01')
-    expect(reportUrls()).toHaveLength(5)
+    expect(reportUrls()).toHaveLength(6)
     expect(store.appointments).toEqual({ tag: 'appointments' })
   })
 
@@ -197,7 +200,7 @@ describe('dashboard store', () => {
   it('ignores a slow answer to an older request', async () => {
     serve()
     const older = deferred()
-    for (let i = 0; i < 5; i++) fetchMock.mockReturnValueOnce(older.promise)
+    for (let i = 0; i < 6; i++) fetchMock.mockReturnValueOnce(older.promise)
     const store = useDashboard()
     store.from = '2026-01-01'
     store.to = '2026-12-31'
@@ -208,27 +211,5 @@ describe('dashboard store', () => {
     await first
     expect(store.appointments).toEqual({ tag: 'appointments' })
     expect(store.loading).toBe(false)
-  })
-})
-describe('greeting', () => {
-  const at = (hour, minute = 0) => new Date(2026, 10, 14, hour, minute)
-
-  it.each([
-    [5, 0, 'Good Morning, connor'],
-    [9, 30, 'Good Morning, connor'],
-    [11, 59, 'Good Morning, connor'],
-    [12, 0, 'Good Afternoon, connor'],
-    [16, 59, 'Good Afternoon, connor'],
-    [17, 0, 'Good Evening, connor'],
-    [23, 59, 'Good Evening, connor'],
-    [0, 0, 'Good Evening, connor'],
-    [4, 59, 'Good Evening, connor'],
-  ])('at %i:%i says %s', (hour, minute, expected) => {
-    expect(greeting(at(hour, minute), 'connor')).toBe(expected)
-  })
-
-  it('leaves the name off when there is none', () => {
-    expect(greeting(at(9), '')).toBe('Good Morning')
-    expect(greeting(at(9), undefined)).toBe('Good Morning')
   })
 })

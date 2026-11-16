@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { setCsrf } from './api'
 import {
   downloadReport, getAppointmentsReport, getCallsReport, getCounters, getDevicesReport,
-  getLocationsReport, reportUrl, getZipsReport,
+  getLocationsReport, reportUrl, getZipsReport, getLanguagesReport
 } from './statsApi'
 import { saveFile } from './lib/download'
 
@@ -75,5 +75,11 @@ describe('stats API', () => {
     fetchMock.mockReturnValue(reply(400, { error: 'bad_request', field: 'range' }))
     await expect(downloadReport('zips', RANGE)).rejects.toMatchObject({ status: 400 })
     expect(saveFile).not.toHaveBeenCalled()
+  })
+
+  it('loads the languages report without a grouping', async () => {
+    fetchMock.mockReturnValue(reply(200, {}))
+    await getLanguagesReport({ ...RANGE, interval: 'quarter' })
+    expect(url()).toBe('/api/stats/languages?from=2026-01-01&to=2026-12-31')
   })
 })

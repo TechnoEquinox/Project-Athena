@@ -121,3 +121,48 @@ export const pieOptions = () => ({
   maintainAspectRatio: false,
   plugins: { legend: { position: 'right' } },
 })
+
+// ---------- languages spoken ----------
+
+const TOP_LANGUAGES = 12
+
+export function topLanguages(report, limit = TOP_LANGUAGES) {
+  return {
+    shown: report.languages.slice(0, limit),
+    hidden: Math.max(0, report.languages.length - limit),
+  }
+}
+
+export function languagesChart(report, limit = TOP_LANGUAGES) {
+  const { shown } = topLanguages(report, limit)
+  return {
+    labels: shown.map((l) => l.language),
+    datasets: [{ label: 'Clients', data: shown.map((l) => l.clients), backgroundColor: colorAt(0) }],
+  }
+}
+
+export const languagesEmpty = (report) => !report || report.languages.length === 0
+
+export function languageSummary(report) {
+  const total = report.total_clients
+  return {
+    total,
+    multilingual: report.multilingual_clients,
+    noLanguage: report.no_language,
+    multilingualPct: total ? Math.round((100 * report.multilingual_clients) / total) : 0,
+  }
+}
+
+/** Chart height in rem: tall enough for the bars to be readable, with a floor and a ceiling. */
+export const languagesHeight = (bars) => Math.min(40, Math.max(12, 3 + bars * 1.7))
+
+export const languagesOptions = () => ({
+  responsive: true,
+  maintainAspectRatio: false,
+  indexAxis: 'y',
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: 'Clients' } },
+    y: { ticks: { autoSkip: false } },
+  },
+})

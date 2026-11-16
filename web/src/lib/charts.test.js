@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   PALETTE, appointmentRows, appointmentsChart, appointmentsEmpty, axisOptions, callRows,
   callsChart, callsEmpty, colorAt, devicesChart, devicesEmpty, formatMinutes, locationsChart,
-  locationsEmpty, paceChart, pieOptions, techChartLabel,
+  locationsEmpty, paceChart, pieOptions, techChartLabel, languageSummary, languagesChart,
+  languagesEmpty, languagesHeight, languagesOptions, topLanguages
 } from './charts'
 
 const buckets = [
@@ -178,5 +179,61 @@ describe('chart options', () => {
   it('sizes to its container', () => {
     expect(axisOptions().maintainAspectRatio).toBe(false)
     expect(pieOptions().maintainAspectRatio).toBe(false)
+  })
+})
+
+describe('languages', () => {
+  const report = {
+    languages: [
+      { language: 'Spanish', clients: 3 },
+      { language: 'English', clients: 2 },
+      { language: 'Portuguese', clients: 1 },
+    ],
+    no_language: 1, multilingual_clients: 2, total_clients: 5,
+  }
+  const many = {
+    languages: Array.from({ length: 15 }, (_, i) => ({ language: `Language ${i}`, clients: 15 - i })),
+    no_language: 0, multilingual_clients: 0, total_clients: 15,
+  }
+
+  it('draws one bar per language, biggest first', () => {
+    const chart = languagesChart(report)
+    expect(chart.labels).toEqual(['Spanish', 'English', 'Portuguese'])
+    expect(chart.datasets).toHaveLength(1)
+    expect(chart.datasets[0]).toMatchObject({ label: 'Clients', data: [3, 2, 1], backgroundColor: PALETTE[0] })
+  })
+
+  it('shows only the top twelve and counts the rest', () => {
+    expect(languagesChart(many).labels).toHaveLength(12)
+    expect(topLanguages(many).hidden).toBe(3)
+    expect(topLanguages(many, 5).shown).toHaveLength(5)
+    expect(topLanguages(report)).toEqual({ shown: report.languages, hidden: 0 })
+  })
+
+  it('summarises how many clients speak more than one language', () => {
+    expect(languageSummary(report)).toEqual({ total: 5, multilingual: 2, noLanguage: 1, multilingualPct: 40 })
+    expect(languageSummary({ ...report, total_clients: 0, multilingual_clients: 0 }).multilingualPct).toBe(0)
+  })
+
+  it('knows when there is nothing to draw', () => {
+    expect(languagesEmpty(null)).toBe(true)
+    expect(languagesEmpty({ languages: [] })).toBe(true)
+    expect(languagesEmpty(report)).toBe(false)
+  })
+
+  it('makes the chart taller for more bars, within limits', () => {
+    expect(languagesHeight(0)).toBe(12)
+    expect(languagesHeight(5)).toBe(12)
+    expect(languagesHeight(10)).toBe(20)
+    expect(languagesHeight(40)).toBe(40)
+  })
+
+  it('lays the bars out sideways with a whole-number count axis', () => {
+    const options = languagesOptions()
+    expect(options.indexAxis).toBe('y')
+    expect(options.maintainAspectRatio).toBe(false)
+    expect(options.plugins.legend.display).toBe(false)
+    expect(options.scales.x.beginAtZero).toBe(true)
+    expect(options.scales.x.ticks.precision).toBe(0)
   })
 })

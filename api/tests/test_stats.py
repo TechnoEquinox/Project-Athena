@@ -14,7 +14,7 @@ from app.models import (
 PASSWORD = "correct horse battery"
 BASE = "/api/stats"
 YEAR = {"from": "2026-01-01", "to": "2026-12-31"}
-DATA_PATHS = ["appointments", "calls", "locations", "devices", "zips"]
+DATA_PATHS = ["appointments", "calls", "locations", "devices", "zips", "languages"]
 
 ENDPOINTS = [
     f"{BASE}/counters",
@@ -24,6 +24,7 @@ ENDPOINTS = [
     f"{BASE}/devices?from=2026-01-01&to=2026-12-31",
     f"{BASE}/zips?from=2026-01-01&to=2026-12-31",
     f"{BASE}/export?report=zips&from=2026-01-01&to=2026-12-31",
+    f"{BASE}/languages?from=2026-01-01&to=2026-12-31",
 ]
 
 
@@ -84,11 +85,11 @@ def data(app):
         outreach = Location(name="Outreach", name_key="outreach", is_active=False)
         pat = Tech(first_name="Pat", last_name="Lee", start_date=date(2024, 1, 1))
         sam = Tech(first_name="Sam", last_name="Ray", start_date=date(2024, 1, 1))
-        ada = Client(first_name="Ada", last_name="Lovelace", zipcode="06492")
-        grace = Client(first_name="Grace", last_name="Hopper", zipcode="06410")
-        alan = Client(first_name="Alan", last_name="Turing", zipcode="06410")
+        ada = Client(first_name="Ada", last_name="Lovelace", zipcode="06492", languages=["English", "Spanish"])
+        grace = Client(first_name="Grace", last_name="Hopper", zipcode="06410", languages=["Spanish"])
+        alan = Client(first_name="Alan", last_name="Turing", zipcode="06410", languages=["english"])
         kim = Client(first_name="Kim", last_name="Out", zipcode="10001")
-        zed = Client(first_name="Zed", last_name="Nozip")
+        zed = Client(first_name="Zed", last_name="Nozip", languages=["Spanish", "spanish", "Portuguese"])
         db.session.add_all([library, senior, outreach, pat, sam, ada, grace, alan, kim, zed])
         db.session.flush()
 
@@ -474,3 +475,53 @@ def test_export_cells_cannot_start_a_spreadsheet_formula(app, client, viewer, da
         db.session.commit()
     rows = rows_of(client.get(f"{BASE}/export", query_string={"report": "locations", **YEAR}))
     assert any(row[2] == "'=SUM(1+1)" for row in rows)
+
+# ---------- languages ----------
+
+def test_languages_spoken(client, viewer, data):
+    body = get(client, "languages", **YEAR).get_json()
+    assert (body["from"], body["to"]) == ("2026-01-01", "2026-12-31")
+    # Spanish: Ada, Grace, Zed (once, despite two spellings). English: Ada and Alan ("english").
+    assert body["languages"] == [
+        {"language": "Spanish", "clients": 3},
+        {"language": "English", "clients": 2},
+        {"language": "Portuguese", "clients": 1},
+    ]
+    assert body["no_language"] == 1            # Kim
+    assert body["multilingual_clients"] == 2   # Ada and Zed
+    assert body["total_clients"] == 5
+
+
+def test_a_client_counts_once_per_language_however_many_appointments(client, viewer, data):
+    body = get(client, "languages", **{"from": "2026-01-01", "to": "2026-02-28"}).get_json()
+    # Ada (two appointments) and Grace
+    assert body["languages"] == [
+        {"language": "Spanish", "clients": 2},
+        {"language": "English", "clients": 1},
+    ]
+    assert body["total_clients"] == 2 and body["multilingual_clients"] == 1 and body["no_language"] == 0
+
+
+def test_languages_with_nothing_in_range(client, viewer, data):
+    body = get(client, "languages", **{"from": "2030-01-01", "to": "2030-12-31"}).get_json()
+    assert body == {
+        "from": "2030-01-01", "to": "2030-12-31", "languages": [],
+        "no_language": 0, "multilingual_clients": 0, "total_clients": 0,
+    }
+
+
+def test_deleted_clients_are_not_in_the_language_counts(app, client, viewer, data):
+    with app.app_context():
+        db.session.get(Client, data.zed).deleted_at = utc(2026, 10, 1)
+        db.session.commit()
+    body = get(client, "languages", **YEAR).get_json()
+    assert {l["language"] for l in body["languages"]} == {"Spanish", "English"}
+    assert body["total_clients"] == 4 and body["multilingual_clients"] == 1
+
+
+def test_languages_export(client, viewer, data):
+    rows = rows_of(client.get(f"{BASE}/export", query_string={"report": "languages", **YEAR}))
+    assert rows == [
+        ["language", "clients"], ["Spanish", "3"], ["English", "2"],
+        ["Portuguese", "1"], ["Not recorded", "1"],
+    ]
