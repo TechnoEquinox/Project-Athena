@@ -19,4 +19,4 @@ work you do, get their approval first.
   Front end: `sudo docker compose run --rm web npm test`.
 - New behavior comes with tests.
 - Never put real patron data, passwords, keys or addresses in an issue, a pull request or a test.
-- Report security problems privately, not in a public issue. SECURITY.md will say how.
+- Report security problems privately, not in a public issue. [SECURITY.md](SECURITY.md) has instructions for properly reporting vulnerabilities.
