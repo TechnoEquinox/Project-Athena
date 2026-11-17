@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Connor Bailey
+
 """Add audit log
 
 Revision ID: 4a7dec49e586

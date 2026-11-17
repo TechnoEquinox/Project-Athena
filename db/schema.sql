@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2026 Connor Bailey
+
 -- REFERENCE ONLY. The source of truth is the SQLAlchemy models + Alembic migrations in api/.
 -- Defines the schema for a tech that takes appointments with clients.
 CREATE TABLE tech (

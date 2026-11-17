@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Connor Bailey
+
 import { geoArea, geoBounds } from 'd3-geo'
 import { describe, expect, it } from 'vitest'
 import data from './ct-zcta.json'

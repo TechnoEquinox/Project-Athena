@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Connor Bailey
+
 import { roleLabel } from './admin'
 
 // Colour-blind-friendly palette. Wraps around if there are more series than colours.

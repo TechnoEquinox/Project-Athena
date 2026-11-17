@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Connor Bailey
+
 """Add two-factor tables
 
 Revision ID: bf2fb47102e2

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Connor Bailey
+
 // Capitalised on purpose: the dashboard counts devices by this exact text.
 export const DEVICE_TYPES = [
   'Phone', 'Tablet', 'Laptop', 'Desktop', 'Smartwatch', 'Smart TV', 'E-reader', 'Other',

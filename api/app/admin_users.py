@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Connor Bailey
+
 from flask import Blueprint, g, jsonify, request
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError

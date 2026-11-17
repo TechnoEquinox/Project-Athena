@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Connor Bailey
+
 set -e
 
 psql -v ON_ERROR_STOP=1 \

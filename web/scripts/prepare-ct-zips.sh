@@ -1,4 +1,7 @@
 #!/bin/sh
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Connor Bailey
+
 # Builds src/data/ct-zcta.json: Connecticut ZIP Code Tabulation Areas, for the dashboard map.
 # Run this file from the project's root:
 #   sudo docker compose run --rm web sh scripts/prepare-ct-zips.sh

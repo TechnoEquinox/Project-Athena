@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Connor Bailey
+
 import { geoBounds, geoMercator, geoPath } from 'd3-geo'
 
 export const MAP_SIZE = { width: 800, height: 560 }

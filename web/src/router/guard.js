@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Connor Bailey
+
 /** Decide where a navigation should go. Returns true to allow, or a route location to redirect to. */
 export function decide(to, auth) {
   if (to.meta.public) return auth.isAuthenticated ? { name: 'home' } : true

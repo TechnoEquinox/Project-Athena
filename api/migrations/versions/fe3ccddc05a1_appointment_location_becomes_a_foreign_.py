@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Connor Bailey
+
 """Appointment location becomes a foreign key
 
 Revision ID: fe3ccddc05a1

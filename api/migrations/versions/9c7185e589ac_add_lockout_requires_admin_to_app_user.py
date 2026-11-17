@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Connor Bailey
+
 """Add lockout_requires_admin to app_user
 
 Revision ID: 9c7185e589ac

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Connor Bailey
+
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, setCsrf } from './api'
 import {
