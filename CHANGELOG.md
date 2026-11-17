@@ -5,4 +5,4 @@
 
 ## v0.1.1
 - Fixed an issue where the chart sizing on the dashboard was too compact, causing data to be unreadable.
-- Added example images to the README.md
+- Added example screenshots to the README.md
