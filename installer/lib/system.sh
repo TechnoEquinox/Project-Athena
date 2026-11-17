@@ -45,15 +45,32 @@ check_internet() {
   fi
 }
 
+apt_fail() {
+  printf '\nThe last lines of the log:\n' >&2
+  tail -n 15 "$LOG_FILE" >&2
+  die "$1 The full log is in $LOG_FILE."
+}
+
 install_packages() {
   export DEBIAN_FRONTEND=noninteractive
   say "Updating the package list..."
-  apt-get update -qq >>"$LOG_FILE" 2>&1 || die "apt-get update failed. See $LOG_FILE."
-  say "Installing Docker and helper tools (this can take a few minutes)..."
-  apt-get install -y -qq docker.io docker-compose-v2 curl openssl ufw python3 ca-certificates cron >>"$LOG_FILE" 2>&1 \
-    || die "Package installation failed. See $LOG_FILE."
+  apt-get update -qq >>"$LOG_FILE" 2>&1 || apt_fail "apt-get update failed."
+
+  say "Installing helper tools..."
+  apt-get install -y -qq curl openssl ufw python3 ca-certificates cron >>"$LOG_FILE" 2>&1 \
+    || apt_fail "Installing helper tools failed."
+
+  if command -v docker >/dev/null 2>&1; then
+    ok "Docker is already installed - keeping it as it is."
+  else
+    say "Installing Docker (this can take a few minutes)..."
+    apt-get install -y -qq docker.io docker-compose-v2 >>"$LOG_FILE" 2>&1 \
+      || apt_fail "Installing Docker failed."
+  fi
+
   systemctl enable --now docker >>"$LOG_FILE" 2>&1 || die "Could not start Docker."
-  docker compose version >/dev/null 2>&1 || die "Docker Compose is not working after install."
+  docker compose version >/dev/null 2>&1 \
+    || die "Docker is installed but the 'docker compose' command is missing. Install the Docker Compose plugin (package docker-compose-plugin or docker-compose-v2), then run this installer again."
   ok "Docker is installed and running."
 }
 
