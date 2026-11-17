@@ -86,6 +86,8 @@ Please update to it before reporting, if you can.
 
 ## How Athena is designed to be secure
 
+Athena is built to protect sensitive patron information at several layers. All traffic is encrypted with HTTPS (TLS), and the web server sends strict security headers, including a Content Security Policy. Passwords are stored only as Argon2id hashes, and repeated failed sign-ins lock an account for progressively longer periods until an administrator unlocks it. Administrator and manager accounts must use two-factor authentication (TOTP), with one-time recovery codes, and the secrets behind it are encrypted in the database. Sessions are tracked on the server, expire after 30 minutes of inactivity (or 8 hours at most), and travel in cookies marked HttpOnly, Secure, and SameSite=Strict, with a CSRF token required on every state-changing request. Access is role-based (administrator, manager, navigator), and an automated test fails the build if any endpoint is left unprotected. The application connects to its database with a limited account, not the database owner. Every change to records is written to an append-only audit log that the database itself prevents from being edited or deleted, and records are soft-deleted and purged after a retention period (30 days by default). Athena also contains no analytics, tracking, or other outside services.
+
 ### Assumptions
 
 Athena is designed for a library that:
@@ -98,4 +100,5 @@ Athena is designed for a library that:
 
 **Disk encryption is not set up by Athena.** The design relies on physical security of the
 server. If your server room is not locked down, or if drives leave your control (repairs, warranty
-swaps, recycling),
+swaps, recycling), you must take the necessary steps to secure this data. The developer is not responsible
+for the physical security of your infrastructure. 
