@@ -1,0 +1,7 @@
+/var/log/athena-purge.log /var/log/athena-install.log {
+    monthly
+    rotate 6
+    compress
+    missingok
+    notifempty
+}

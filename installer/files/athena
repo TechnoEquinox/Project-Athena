@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# 'athena' - everyday commands for administrators.  Run as: athena <command>
+set -euo pipefail
+DIR="@INSTALL_DIR@"
+cd "$DIR"
+[ "$(id -u)" -eq 0 ] || exec sudo "$0" "$@"
+
+help() { cat <<H
+Athena commands (run on the server):
+  athena status              Is everything running?
+  athena logs [service]      Show recent logs (api, db, caddy)
+  athena restart             Restart Athena (keeps all data)
+  athena start | stop        Start or stop Athena
+  athena create-admin        Create an administrator account
+  athena create-user         Create a staff account
+  athena unlock-user NAME    Unlock a locked-out account
+  athena reset-totp NAME     Reset someone's 2FA (lost phone)
+  athena cert                Copy the certificate to your home folder and show its fingerprint
+  athena version             Show the installed version
+H
+}
+
+flask_cmd() { docker compose run --rm api flask "$@"; }
+
+cmd="${1:-help}"; [ $# -gt 0 ] && shift
+case "$cmd" in
+  status)  docker compose ps; echo; curl -fsS --max-time 5 http://127.0.0.1:8000/health && echo " <- health check OK" || echo "Health check FAILED" ;;
+  logs)    docker compose logs --tail 100 "${1:-api}" ;;
+  restart) docker compose restart ;;
+  start)   docker compose up -d ;;
+  stop)    docker compose stop ;;
+  create-admin|create-user|unlock-user|reset-totp) flask_cmd "$cmd" "$@" ;;
+  cert)
+    out="${SUDO_USER:+/home/$SUDO_USER}"; out="${out:-/root}/athena-root-ca.crt"
+    docker compose cp caddy:/data/caddy/pki/authorities/local/root.crt "$out"
+    [ -n "${SUDO_USER:-}" ] && chown "$SUDO_USER" "$out" || true
+    echo "Saved: $out"; openssl x509 -in "$out" -noout -subject -fingerprint -sha256 ;;
+  version) cat VERSION ;;
+  help|-h|--help) help ;;
+  *) echo "Unknown command: $cmd"; echo; help; exit 1 ;;
+esac
