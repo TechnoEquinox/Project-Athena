@@ -146,7 +146,7 @@ async function exportReport(report) {
         {{ formatMinutes(store.appointments.total.overall_average_minutes) }}
         <span class="muted">average over this range</span>
       </p>
-      <div class="chart">
+      <div class="chart chart--tall">
         <Chart
           type="line"
           :data="paceData"

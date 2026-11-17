@@ -1,4 +1,4 @@
-# Project-Athena (v0.1.0)
+# Project-Athena (v0.1.1)
 
 Project Athena is the open source CRM tooling for Connecticut Public Libraries in their work to provide Digital Navigation to their community. This tool allows staff in a libraries technology department to track unique clients across multiple appointments at different locations, and provide statistics, KPIs, and other useful metrics used for staffing, securing grants for future funding, and more. 
 
@@ -6,9 +6,10 @@ Project Athena is the open source CRM tooling for Connecticut Public Libraries i
 - No tracking, registration, or phoning home to third party companies or services
 - Sign-in uses passwords plus two-step verification through your preferred TOTP authentication app
 - Free for any library to use, change, and share (AGPL-3.0, see License)
-- **Status: Early release (0.1.0).** Initial public release of the project, but **built-in backups are still a work in progress**. Please do not store irreplaceable data until you have a backup plan. **Installer files will be added in a future release**.
+- **Status: Early release (0.1.1).** Initial public release of the project, but **built-in backups are still a work in progress**. Please do not store irreplaceable data until you have a backup plan. **Installer files will be added in a future release**.
 
 ### Table of Contents
+- [Screenshots](#screenshots)
 - [What You Need](#what-you-need)
 - [Install](#install)
 - [After install](#after-install)
@@ -23,6 +24,20 @@ Project Athena is the open source CRM tooling for Connecticut Public Libraries i
 - [Security](#security)
 - [Contributing](#contributing)
 - [License](#license)
+
+## Screenshots
+
+![Athena dashboard with appointment counts with average appointment length](docs/screenshots/example-dashboard-pt1.png)
+
+![Athena dashboard with inbound and outbound calls, appointments by location, devices seen, and languages spoken](docs/screenshots/example-dashboard-pt2.png)
+
+![Athena dashboard with mapped client zipcodes on a map of Connecticut](docs/screenshots/example-dashboard-pt3.png)
+
+![Athena client screen, listing client information, client devices, client unique appointments, and client call log](docs/screenshots/example-client.png)
+
+![Athena call log, showing calls with no action required, outgoing calls, needs calls, and more](docs/screenshots/example-call-log.png)
+
+![Athena example of logging a call (inbound/outbound)](docs/screenshots/example-call-logging.png)
 
 ## What You Need
 
