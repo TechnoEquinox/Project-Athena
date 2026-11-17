@@ -1,4 +1,4 @@
-# Project-Athena (v0.1.1)
+# Project-Athena (v0.2)
 
 Project Athena is the open source CRM tooling for Connecticut Public Libraries in their work to provide Digital Navigation to their community. This tool allows staff in a libraries technology department to track unique clients across multiple appointments at different locations, and provide statistics, KPIs, and other useful metrics used for staffing, securing grants for future funding, and more. 
 
@@ -6,7 +6,7 @@ Project Athena is the open source CRM tooling for Connecticut Public Libraries i
 - No tracking, registration, or phoning home to third party companies or services
 - Sign-in uses passwords plus two-step verification through your preferred TOTP authentication app
 - Free for any library to use, change, and share (AGPL-3.0, see License)
-- **Status: Early release (0.1.1).** Initial public release of the project, but **built-in backups are still a work in progress**. Please do not store irreplaceable data until you have a backup plan. **Installer files will be added in a future release**.
+- **Status: Early release (0.2).** Initial public release of the project, but **built-in backups are still a work in progress**. Please do not store irreplaceable data until you have a backup plan.
 
 ### Table of Contents
 - [Screenshots](#screenshots)
