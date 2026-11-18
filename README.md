@@ -162,7 +162,7 @@ On the Ubuntu Server:
 
 ```bash
 cd ~
-sudo rm athena-env-backup
+sudo shred -u ~/athena-env-backup
 ```
 
 ## Everyday commands
