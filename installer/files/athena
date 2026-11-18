@@ -16,6 +16,10 @@ Athena commands (run on the server):
   athena unlock-user NAME    Unlock a locked-out account
   athena reset-totp NAME     Reset someone's 2FA (lost phone)
   athena cert                Copy the certificate to your home folder and show its fingerprint
+  athena backup              Make an encrypted backup right now
+  athena backups             List the backups on this server
+  athena backup-status       Show when the last backup ran and whether it worked
+  athena restore FILE KEY    Restore a backup (FILE = .tar.age, KEY = your saved key file)
   athena version             Show the installed version
 H
 }
@@ -35,6 +39,27 @@ case "$cmd" in
     docker compose cp caddy:/data/caddy/pki/authorities/local/root.crt "$out"
     [ -n "${SUDO_USER:-}" ] && chown "$SUDO_USER" "$out" || true
     echo "Saved: $out"; openssl x509 -in "$out" -noout -subject -fingerprint -sha256 ;;
+    backup)  ATHENA_DIR="$DIR" /usr/local/sbin/athena-backup && athena backup-status ;;
+  backups) ls -lh --time-style=long-iso /var/backups/athena/athena-backup-*.tar.age 2>/dev/null || echo "No backups yet." ;;
+  backup-status)
+    python3 - <<'PY'
+import json
+try:
+    s = json.load(open("/var/lib/athena/backup-status.json"))
+except Exception:
+    print("No backup has run yet."); raise SystemExit
+print("Last attempt :", s.get("last_attempt"), "-", "OK" if s.get("ok") else "FAILED")
+print("Message      :", s.get("message"))
+print("Last success :", s.get("last_success"))
+print("Last file    :", s.get("last_file"), "(%s bytes)" % s.get("last_bytes"))
+print("Backups kept :", s.get("count"))
+PY
+    ;;
+  restore)
+    [ $# -eq 2 ] || { echo "Usage: athena restore BACKUPFILE KEYFILE"; exit 1; }
+    # shellcheck source=/dev/null
+    . /usr/local/lib/athena/backup.sh
+    ATHENA_DIR="$DIR" restore_backup "$1" "$2" ;;
   version) cat VERSION ;;
   help|-h|--help) help ;;
   *) echo "Unknown command: $cmd"; echo; help; exit 1 ;;

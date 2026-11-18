@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Runs one backup. Called every night by cron, by 'athena backup', and (later) by the admin page.
+set -Eeuo pipefail
+[ "$(id -u)" -eq 0 ] || { echo "Run as root: sudo athena-backup" >&2; exit 1; }
+LIB="${ATHENA_LIB:-/usr/local/lib/athena}"
+# shellcheck source=/dev/null
+. "$LIB/backup.sh"
+exec 9>/run/athena-backup.lock
+flock -n 9 || { blog "Another backup is already running."; exit 0; }
+run_backup

@@ -14,6 +14,7 @@ export LOG_FILE="${LOG_FILE:-/var/log/athena-install.log}"
 . "$SRC_DIR/installer/lib/config.sh"
 . "$SRC_DIR/installer/lib/system.sh"
 . "$SRC_DIR/installer/lib/firewall.sh"
+. "$SRC_DIR/installer/lib/backupsetup.sh"
 
 trap 'printf "\nThe installer stopped unexpectedly (line %s). Details: %s\nIt is safe to run it again.\n" "$LINENO" "$LOG_FILE" >&2' ERR
 
@@ -28,24 +29,24 @@ cat <<BANNER
     2. ask you a few simple questions,
     3. build and start Athena,
     4. turn on a firewall limited to your library network,
-    5. schedule nightly cleanup tasks.
-  It takes about 10 minutes. Nothing is sent anywhere: Athena has no
+    5. schedule nightly cleanup tasks and encrypted backups.
+  This setup takes about 10 minutes. Nothing is sent anywhere: Athena has no
   tracking and does not report back to anyone.
 BANNER
 confirm "Ready to begin?" y || die "Cancelled. Nothing was changed."
 
 : >>"$LOG_FILE" && chmod 600 "$LOG_FILE"
 
-step "1 of 9: Checking this server"
+step "1 of 10: Checking this server"
 preflight
 check_internet
 report_encryption
 report_dhcp
 
-step "2 of 9: Installing software"
+step "2 of 10: Installing software"
 install_packages
 
-step "3 of 9: A few questions"
+step "3 of 10: A few questions"
 DETECTED_IP="$(detect_ip || true)"
 DETECTED_CIDR="$(detect_cidr || true)"
 
@@ -96,7 +97,7 @@ if confirm "Turn on the firewall so only your library network can reach this ser
   done
 fi
 
-step "4 of 9: Copying Athena to $INSTALL_DIR"
+step "4 of 10: Copying Athena to $INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"
 if [ "$(readlink -f "$SRC_DIR")" != "$(readlink -f "$INSTALL_DIR")" ]; then
   tar -C "$SRC_DIR" --exclude=./.env --exclude=./web/dist --exclude=./web/node_modules -cf - . | tar -C "$INSTALL_DIR" -xf -
@@ -106,7 +107,7 @@ else
 fi
 cd "$INSTALL_DIR"
 
-step "5 of 9: Creating secret settings"
+step "5 of 10: Creating secret settings"
 if [ -e .env ]; then
   ok "Found an existing .env - keeping it exactly as it is."
 else
@@ -115,7 +116,7 @@ else
   warn "IMPORTANT: .env holds the keys to your data. Copy it somewhere safe and OFFLINE (e.g. a locked drawer on a USB stick). Without the encryption key, saved 2FA secrets cannot be recovered."
 fi
 
-step "6 of 9: Building and starting Athena (slowest step)"
+step "6 of 10: Building and starting Athena (slowest step)"
 say "Building the web pages..."
 docker compose run --rm --user 0:0 web sh -c "npm ci && npm run build" >>"$LOG_FILE" 2>&1 \
   || die "Building the web pages failed. See $LOG_FILE (last lines: $(tail -3 "$LOG_FILE" | tr '\n' ' '))"
@@ -138,10 +139,10 @@ done
 [ "${HEALTHY:-0}" = "1" ] || die "Athena started but is not answering. Run:  cd $INSTALL_DIR && docker compose logs api"
 ok "Athena is running and healthy."
 
-step "7 of 9: Firewall"
+step "7 of 10: Firewall"
 if [ "$ENABLE_FW" = 1 ]; then apply_firewall "$FW_CIDR"; else warn "Firewall left unchanged. Strongly consider turning it on later."; fi
 
-step "8 of 9: Nightly tasks and the 'athena' command"
+step "8 of 10: Nightly tasks and the 'athena' command"
 install -m 644 installer/files/athena.cron /etc/cron.d/athena
 sed -i "s|@INSTALL_DIR@|$INSTALL_DIR|g" /etc/cron.d/athena
 install -m 644 installer/files/athena.logrotate /etc/logrotate.d/athena
@@ -149,7 +150,10 @@ install -m 755 installer/files/athena /usr/local/bin/athena
 sed -i "s|@INSTALL_DIR@|$INSTALL_DIR|g" /usr/local/bin/athena
 ok "Installed. Type 'athena help' any time to see what you can do."
 
-step "9 of 9: Certificate for staff computers"
+step "9 of 10: Encrypted backups"
+setup_backups
+
+step "10 of 10: Certificate for staff computers"
 CERT_OUT="/root/athena-root-ca.crt"
 [ -n "${SUDO_USER:-}" ] && [ -d "/home/$SUDO_USER" ] && CERT_OUT="/home/$SUDO_USER/athena-root-ca.crt"
 for _ in $(seq 1 20); do
@@ -181,7 +185,9 @@ cat <<DONE
       Its fingerprint (to confirm you have the right file):
           ${CERT_FP:-run 'athena cert' to see it}
    3. Save a copy of  $INSTALL_DIR/.env  somewhere safe, offline.
-   4. BACKUPS ARE NOT SET UP YET. Until they are, a failed disk means lost data.
+   4. Backups run every night (2:45am), encrypted, into /var/backups/athena
+
+   Keep your backup key safe: without it, backups cannot be restored and the data is lost.
 
    Full log of this install: $LOG_FILE
 DONE

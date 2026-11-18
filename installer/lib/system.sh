@@ -57,7 +57,7 @@ install_packages() {
   apt-get update -qq >>"$LOG_FILE" 2>&1 || apt_fail "apt-get update failed."
 
   say "Installing helper tools..."
-  apt-get install -y -qq curl openssl ufw python3 ca-certificates cron >>"$LOG_FILE" 2>&1 \
+  apt-get install -y -qq curl openssl ufw python3 ca-certificates cron age >>"$LOG_FILE" 2>&1 \
     || apt_fail "Installing helper tools failed."
 
   if command -v docker >/dev/null 2>&1; then
