@@ -69,6 +69,7 @@ Now we are ready to install Athena onto the system:
 ```bash
 chmod +x install.sh installer/files/athena
 sudo ./install.sh
+```
 
 The installer asks a few plain questions and explains each step as it goes:
 
