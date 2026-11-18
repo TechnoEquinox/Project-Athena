@@ -43,7 +43,7 @@ Project Athena is the open source CRM tooling for Connecticut Public Libraries i
 
 | | |
 |---|---|
-| **Server**    | A computer running Ubuntu Server 24.04 or newer (a small PC is fine). At least 2 CPU cores, 2 GB memory (4 GB better), 20 GB free disk.     |
+| **Server** | A computer running **Ubuntu Server** (tested on 26.04; 24.04 or newer should also work). At least 2 CPU cores, 2 GB memory (4 GB better), 20 GB free disk. |
 | **Network**    | A wired connection and a fixed IP address for the server (ask your IT contact for a "DHCP reservation").     |
 | **Where**    | A physically secure spot (locked room). Patron records are stored on it. The disk is not encrypted by default; see [SECURITY.md](SECURITY.md).     |
 | **Employee**    | Someone comfortable typing commands over SSH or locally on the server. You do not need to be a programmer to complete the setup.     |
@@ -56,11 +56,19 @@ After booting Ubuntu Server, you have two different options:
 Next, copy and paste these lines:
 
 ```bash
-sudo apt-get update && sudo apt-get install -y git
+sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get install -y git
 git clone https://github.com/TechnoEquinox/Project-Athena.git
 cd Project-Athena
-sudo ./install.sh
 ```
+The first line update and upgrade the packages, then installs git.
+The second line grabs the project's files from GitHub.
+The third line then opens the root directory of the project.
+
+Now we are ready to install Athena onto the system:
+
+```bash
+chmod +x install.sh installer/files/athena
+sudo ./install.sh
 
 The installer asks a few plain questions and explains each step as it goes:
 
@@ -75,10 +83,10 @@ When it finishes, it prints your next steps. They are repeated below.
 
 ### 1. Create the first administrator
 ```bash
-athena create-admin
+athena create-admin [INSERT ADMIN USERNAME HERE]
 ```
 
-You will be asked for a name and a password (12+ characters are required). Anything you type for the password is hidden. If you only want one person to have administration access, you can use the name ***admin***.
+You will be asked for a password (12+ characters are required). Anything you type for the password is hidden. If you only want one person to have administration access, you can use the name ***admin***.
 
 ### 2. Copy the certificate to staff computers
 
@@ -89,6 +97,9 @@ Athena uses HTTPS with its **own private certificate**, so staff browsers show a
 ```bash
 scp YOUR_USERNAME@SERVER_ADDRESS:athena-root-ca.crt .
 ```
+YOUR_USERNAME is the user you setup on the Ubuntu Server during installation.
+SERVER_ADDRESS is the IP address of the Ubuntu Server.
+**NOTE:** The period ('.') at the end of the command is required.
 
 You can also use any SFTP program (like WinSCP, FileZilla, Cyberduck). To confirm the file was not altered on the way, compare its fingerprint with the one the installer printed:
 
@@ -111,7 +122,7 @@ Compare the SHA-256 values to make sure they match what is shown on the Ubuntu S
 - **Firefox (any computer):** Settings → Privacy & Security → *View Certificates* → *Authorities* → *Import* → tick *Trust this CA to identify websites*.
 - **Library-managed PCs:** your IT team can push the file out with Group Policy or their device manager.
 
-Once the certificate is installed, open your web browser and navigate to `https://YOUR_SERVER_IP_ADDRESS/`. The padlock should show no warnings and should verify the connection is secure.
+Once the certificate is installed, open your web browser and navigate to `https://YOUR_SERVER_IP_ADDRESS/`. The padlock should show no warnings and should verify the connection is secure. If you receive a warning that the connection is not secure, you likely have not installed the certificate correctly. 
 
 ### 3. Sign in and set up two-step verification
 
@@ -119,7 +130,7 @@ Sign in with the administrator account you created during the install. You will 
 
 ### 4. Set up your library
 
-In the **Admin** page, add your **locations**, **navigators**, and **users**. There are three roles with different access policies:
+In the **Admin** page, add your **locations** first, then **navigators** (these are the entries of people who will be taking client appointments, and **users** (these are the user accounts used to login, you assign the role type to the user account, make sure to link a tech record ONLY for Digital Navigators). There are three roles with different access policies:
 
 1. *admin* - Can access everything, including server administration settings
 2. *manager* - Has read-only access, cannot make any changes
@@ -127,9 +138,31 @@ In the **Admin** page, add your **locations**, **navigators**, and **users**. Th
 
 ### 5. Save your secrets offline
 
-On the Ubuntu Server, copy `opt/athena/.env` to a USB and keep that USB in a secure location. It contains the database password and the key that protects saved 2FA secrets. **If you lose it and the server dies, all the data in the database cannot be recovered!** Do not rename or change this file in any way. 
+On the Ubuntu Server, copy `opt/athena/.env` to a USB and keep that USB in a secure location. It contains the database password and the key that protects saved 2FA secrets. **If you lose it and the server dies, all the data in the database cannot be recovered!**
 
-**TODO:** Add instructions for saving the file to a USB or using scp.
+On the Ubuntu Server:
+
+```bash
+cd ~
+sudo cp /opt/athena/.env ~/athena-env-backup
+sudo chown $USER ~/athena-env-backup
+```
+On a client Windows machine:
+
+```bash
+scp YOUR_USERNAME@SERVER_ADDRESS:athena-env-backup .\athena-env-backup.env
+```
+YOUR_USERNAME is the user you setup on the Ubuntu Server during installation.
+SERVER_ADDRESS is the IP address of the Ubuntu Server.
+
+Once complete, you will find the backup in the root directory of your user on your Windows PC. Then cleanup:
+
+On the Ubuntu Server:
+
+```bash
+cd ~
+sudo rm athena-env-backup
+```
 
 ## Everyday commands
 
@@ -160,6 +193,7 @@ Athena is designed so most of these commands are abstracted through the web inte
 - **Page will not load at all:** run `athena status`. If `api` is restarting, run `athena logs`.
 - **Cannot reach the server after it restarted:** its IP address may have changed (DHCP). Ask IT for a fixed address.
 - **The installer stopped:** it tells you which step failed and writes details to `/var/log/athena-install.log`. Run it again; it picks up where it left off.
+- **The installer stops at "Installing helper tools" or "Installing Docker":** the last lines of the log are printed on screen. Package conflicts usually mean two different Docker packages are installed at once (for example `docker-ce` and `docker.io`). Keep one of them, remove the other with `sudo apt-get remove`, then run the installer again.
 
 When asking for help, include the last lines of that log. **Remove any passwords first.**
 
