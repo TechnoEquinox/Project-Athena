@@ -9,3 +9,7 @@
 
 ## v0.2.0
 - Added installer scripts and tests to facilitate setting up the project and configuring it out of the box. 
+
+## v0.3.0
+- Added backup and restore functionality, with the option to also save backups to a connected USB flash drive
+- Added Uninstall scripts to the project
