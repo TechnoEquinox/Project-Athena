@@ -20,6 +20,7 @@ Athena commands (run on the server):
   athena backups             List the backups on this server
   athena backup-status       Show when the last backup ran and whether it worked
   athena restore FILE KEY    Restore a backup (FILE = .tar.age, KEY = your saved key file)
+  athena usb-setup           Prepare a USB drive for backups (this will erase all of the data on a connected USB drive)
   athena version             Show the installed version
 H
 }
@@ -43,7 +44,7 @@ case "$cmd" in
   backups) ls -lh --time-style=long-iso /var/backups/athena/athena-backup-*.tar.age 2>/dev/null || echo "No backups yet." ;;
   backup-status)
     python3 - <<'PY'
-import json
+import json, datetime
 try:
     s = json.load(open("/var/lib/athena/backup-status.json"))
 except Exception:
@@ -53,6 +54,16 @@ print("Message      :", s.get("message"))
 print("Last success :", s.get("last_success"))
 print("Last file    :", s.get("last_file"), "(%s bytes)" % s.get("last_bytes"))
 print("Backups kept :", s.get("count"))
+print()
+print("USB drive    :", s.get("usb_message") or "not set up yet (run: athena usb-setup)")
+last = s.get("usb_last_success")
+print("Last USB copy:", last or "never")
+if last:
+    days = (datetime.datetime.now(datetime.timezone.utc) - datetime.datetime.strptime(last, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)).days
+    if days >= 7:
+        print("WARNING: no backup has reached a USB drive for %d days." % days)
+else:
+    print("WARNING: no backup has ever been copied to a USB drive.")
 PY
     ;;
   restore)
@@ -60,6 +71,12 @@ PY
     # shellcheck source=/dev/null
     . /usr/local/lib/athena/backup.sh
     ATHENA_DIR="$DIR" restore_backup "$1" "$2" ;;
+  usb-setup)
+    # shellcheck source=/dev/null
+    . /usr/local/lib/athena/backup.sh
+    # shellcheck source=/dev/null
+    . /usr/local/lib/athena/usb.sh
+    ATHENA_DIR="$DIR" usb_setup ;;
   version) cat VERSION ;;
   help|-h|--help) help ;;
   *) echo "Unknown command: $cmd"; echo; help; exit 1 ;;

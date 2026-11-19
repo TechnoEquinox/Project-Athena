@@ -1,0 +1,9 @@
+[Unit]
+Description=Athena backup when a backup drive is plugged in
+
+[Service]
+Type=oneshot
+Environment=ATHENA_DIR=@INSTALL_DIR@
+ExecStartPre=/bin/sleep 3
+ExecStart=/usr/local/sbin/athena-backup
+TimeoutStartSec=30min

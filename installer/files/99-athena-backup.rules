@@ -1,0 +1,3 @@
+# When a drive labelled ATHENA-BACKUP is plugged in, make a fresh backup and copy it to the drive.
+# (Only drives set up with 'athena usb-setup' are actually used; the script checks the drive's ID.)
+ACTION=="add", SUBSYSTEM=="block", ENV{ID_FS_LABEL}=="ATHENA-BACKUP", ENV{ID_FS_TYPE}=="ext4", TAG+="systemd", ENV{SYSTEMD_WANTS}+="athena-usb-backup.service"

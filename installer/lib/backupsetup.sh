@@ -58,6 +58,12 @@ setup_backups() {
   install -d -m 700 "$BACKUP_DIR"
   install -m 644 installer/lib/backup.sh "$LIB_DEST/backup.sh"
   install -m 755 installer/files/athena-backup "$SBIN_DEST/athena-backup"
+  install -m 644 installer/lib/usb.sh "$LIB_DEST/usb.sh"
+  install -m 644 installer/files/99-athena-backup.rules /etc/udev/rules.d/99-athena-backup.rules
+  install -m 644 installer/files/athena-usb-backup.service /etc/systemd/system/athena-usb-backup.service
+  sed -i "s|@INSTALL_DIR@|${INSTALL_DIR:-/opt/athena}|g" /etc/systemd/system/athena-usb-backup.service
+  systemctl daemon-reload >/dev/null 2>&1 || true
+  udevadm control --reload >/dev/null 2>&1 || true
   setup_backup_key
   if [ "${SKIP_FIRST_BACKUP:-0}" = "1" ]; then return 0; fi
   say "Making the first backup now to prove it works..."

@@ -179,15 +179,19 @@ cat <<DONE
    NEXT STEPS
    1. Create the first administrator account (you will be asked
       for a name and password):
-          athena create-admin
+          athena create-admin [INSERT ADMIN USERNAME HERE]
    2. Copy the certificate file to staff computers:
           ${CERT_OUT:-/root/athena-root-ca.crt}
       Its fingerprint (to confirm you have the right file):
           ${CERT_FP:-run 'athena cert' to see it}
    3. Save a copy of  $INSTALL_DIR/.env  somewhere safe, offline.
    4. Backups run every night (2:45am), encrypted, into /var/backups/athena
+   5. Recommended: plug in a USB drive and run:   athena usb-setup
 
-   Keep your backup key safe: without it, backups cannot be restored and the data is lost.
+   Keep your backup key safe ($INSTALL_DIR/.env): without it, backups cannot be restored and the data is lost.
+   
+   Athena's USB backup supports multiple USB drives. It is up to you to perform backup best practices.
+   Consider keeping one copy on-site and one copy off-site.
 
    Full log of this install: $LOG_FILE
 DONE
