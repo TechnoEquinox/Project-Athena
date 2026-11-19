@@ -98,6 +98,8 @@ _do_backup() {
   db_check_dump "$stage/database.dump" || { BACKUP_ERR="The database dump could not be read back, so it was not saved."; return 1; }
 
   cp "$ATHENA_DIR/.env" "$stage/athena.env"
+  cp "$CONF_DIR/backup.pub" "$stage/backup.pub"
+  [ -s "$CONF_DIR/usb-drives" ] && cp "$CONF_DIR/usb-drives" "$stage/usb-drives"
   local ca=false
   if ca_export "$stage/caddy" >/dev/null 2>&1 && [ -d "$stage/caddy/pki" ]; then ca=true; fi
 
@@ -105,7 +107,7 @@ _do_backup() {
 import json, socket, sys, time
 json.dump({"created_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "athena_version": sys.argv[2],
            "database_revision": sys.argv[3], "host": socket.gethostname(), "includes_certificate_authority": sys.argv[4] == "true",
-           "contents": ["database.dump", "athena.env", "caddy/pki (if present)", "manifest.json"]},
+           "contents": ["database.dump", "athena.env", "backup.pub", "usb-drives (if any)", "caddy/pki (if present)", "manifest.json"]},
           open(sys.argv[1], "w"), indent=2)
 PY
 
@@ -137,6 +139,25 @@ run_backup() {
 }
 
 # ---------- the restore ----------
+
+# restore_server_settings EXTRACTED_DIR : puts back the backup key's public half and the list of backup drives
+restore_server_settings() {
+  local src="$1" uuid
+  if [ -s "$src/backup.pub" ]; then
+    mkdir -p "$CONF_DIR"
+    install -m 644 "$src/backup.pub" "$CONF_DIR/backup.pub"
+    echo "Backup key restored: future backups will use your original key."
+  else
+    echo "Note: this older backup does not record the backup key, so this server keeps its current one."
+  fi
+  if [ -s "$src/usb-drives" ]; then
+    mkdir -p "$CONF_DIR"; touch "$CONF_DIR/usb-drives"; chmod 644 "$CONF_DIR/usb-drives"
+    while IFS= read -r uuid; do
+      [ -n "$uuid" ] && { grep -qxF "$uuid" "$CONF_DIR/usb-drives" || printf '%s\n' "$uuid" >>"$CONF_DIR/usb-drives"; }
+    done <"$src/usb-drives"
+    echo "Your USB backup drives are recognised again."
+  fi
+}
 
 # restore_backup BACKUPFILE KEYFILE
 restore_backup() {
@@ -170,6 +191,7 @@ restore_backup() {
   admin_pw="$(grep -m1 '^POSTGRES_PASSWORD=' "$ATHENA_DIR/.env" | cut -d= -f2-)"
   printf "ALTER ROLE athena_app PASSWORD :'app_pw';\nALTER ROLE :\"admin_user\" PASSWORD :'admin_pw';\n" | db_sql "$app_pw" "$admin_pw"
   [ -d "$tmp/caddy/pki" ] && ca_import "$tmp/caddy/pki"
+  restore_server_settings "$tmp"
   dc up -d >/dev/null
   echo "Restore finished. Athena is starting. Check it with:  athena status"
 }

@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# shellcheck disable=SC2016,SC2012
+# shellcheck disable=SC2016,SC2012,SC2010
 # USB backup drives. Installed to /usr/local/lib/athena/usb.sh. Needs backup.sh loaded first.
 #
 # A drive is only used if (1) its filesystem label is ATHENA-BACKUP and (2) its UUID is in
@@ -196,4 +196,76 @@ usb_setup() {
   usb_format_drive "$dev" || return 1
   echo "Drive ready (ID $USB_NEW_UUID). Copying the existing backups to it..."
   usb_sync_all && echo "Done. The drive can stay plugged in, or be removed now."
+}
+
+
+# ---------- recovery from a drive ----------
+
+# Any connected drive labelled ATHENA-BACKUP (even one this server has not seen before): prints "DEVICE UUID"
+usb_find_any() {
+  usb_lsblk_json | python3 -c '
+import json, sys
+def walk(nodes):
+    for n in nodes:
+        yield n
+        yield from walk(n.get("children") or [])
+for n in walk(json.load(sys.stdin).get("blockdevices", [])):
+    if n.get("label") == sys.argv[1] and n.get("fstype") == "ext4" and n.get("uuid"):
+        print(n["path"], n["uuid"])
+' "$USB_LABEL"
+}
+
+# Guided restore from a backup drive. Test hooks: USB_RESTORE_DRIVE, USB_RESTORE_CHOICE, USB_RESTORE_KEY.
+usb_restore() {
+  local drives=() dev uuid files=() f n=0 choice key rc=0 pick size
+  mapfile -t drives < <(usb_find_any)
+  if [ "${#drives[@]}" -eq 0 ]; then
+    echo "No Athena backup drive found."
+    echo "Plug the drive in, wait 5 seconds, and run this again."
+    return 1
+  fi
+  pick=1
+  if [ "${#drives[@]}" -gt 1 ]; then
+    echo "More than one backup drive is connected:"
+    for f in "${drives[@]}"; do n=$((n + 1)); echo "  $n) ${f%% *}"; done
+    pick="${USB_RESTORE_DRIVE:-}"
+    [ -n "$pick" ] || read -r -p "Which drive number? " pick </dev/tty || pick=""
+    if ! [[ "$pick" =~ ^[0-9]+$ ]] || [ "$pick" -lt 1 ] || [ "$pick" -gt "${#drives[@]}" ]; then
+      echo "Cancelled. Nothing was changed."; return 1
+    fi
+  fi
+  read -r dev uuid <<<"${drives[$((pick - 1))]}"
+  mkdir -p "$USB_MNT"
+  if ! mount -o ro,nodev,nosuid,noexec "$dev" "$USB_MNT"; then echo "Could not open the drive."; return 1; fi
+  mapfile -t files < <(cd "$USB_MNT/athena-backups" 2>/dev/null && ls -1 | grep -E '^athena-backup-[0-9]{8}-[0-9]{6}\.tar\.age$' | sort -r)
+  if [ "${#files[@]}" -eq 0 ]; then
+    echo "There are no backups on this drive."; umount "$USB_MNT"; return 1
+  fi
+  echo "Backups on this drive (newest first):"
+  n=0
+  for f in "${files[@]:0:15}"; do
+    n=$((n + 1)); size="$(du -h "$USB_MNT/athena-backups/$f" | cut -f1)"
+    printf '  %2d) %s-%s-%s %s:%s UTC   %s\n' "$n" "${f:14:4}" "${f:18:2}" "${f:20:2}" "${f:23:2}" "${f:25:2}" "$size"
+  done
+  choice="${USB_RESTORE_CHOICE:-}"
+  [ -n "$choice" ] || read -r -p "Which backup? [1 = newest] " choice </dev/tty || choice=""
+  choice="${choice:-1}"
+  if ! [[ "$choice" =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt "${#files[@]}" ] || [ "$choice" -gt 15 ]; then
+    echo "Cancelled. Nothing was changed."; umount "$USB_MNT"; return 1
+  fi
+  key="${USB_RESTORE_KEY:-}"
+  [ -n "$key" ] || read -r -p "Path to your backup key file: " key </dev/tty || key=""
+  key="${key/#\~/$HOME}"
+  if [ ! -r "$key" ]; then
+    echo "Cannot read that key file. Save your key (the line starting AGE-SECRET-KEY-) into a file and give its path."
+    umount "$USB_MNT"; return 1
+  fi
+  restore_backup "$USB_MNT/athena-backups/${files[$((choice - 1))]}" "$key" || rc=$?
+  sync; umount "$USB_MNT"
+  if [ "$rc" -eq 0 ]; then
+    touch "$USB_CONF"; chmod 644 "$USB_CONF"
+    grep -qxF "$uuid" "$USB_CONF" || printf '%s\n' "$uuid" >>"$USB_CONF"
+    echo "Done. The drive can be removed."
+  fi
+  return "$rc"
 }
