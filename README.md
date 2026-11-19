@@ -6,7 +6,6 @@ Project Athena is the open source CRM tooling for Connecticut Public Libraries i
 - No tracking, registration, or phoning home to third party companies or services
 - Sign-in uses passwords plus two-step verification through your preferred TOTP authentication app
 - Free for any library to use, change, and share (AGPL-3.0, see License)
-- **Status: Early release (0.2).** Initial public release of the project, but **built-in backups are still a work in progress**. Please do not store irreplaceable data until you have a backup plan.
 
 ### Table of Contents
 - [Screenshots](#screenshots)
@@ -20,6 +19,12 @@ Project Athena is the open source CRM tooling for Connecticut Public Libraries i
   - [5. Save your secrets offline](#5-save-your-secrets-offline)
 - [Everyday commands](#everyday-commands)
 - [Backups](#backups)
+  - [Your Backup Key](#your-backup-key)
+  - [Backing up to a USB drive](#backing-up-to-a-USB-drive)
+- [Restoring from a Backup](#restoring-from-a-backup)
+  - [What you need](#what-you-need)
+  - [Steps to restore the backup](#steps-to-restore-the-backup)
+- [Uninstalling](#uninstalling)
 - [Troubleshooting](#troubleshooting)
 - [Security](#security)
 - [Contributing](#contributing)
@@ -47,6 +52,7 @@ Project Athena is the open source CRM tooling for Connecticut Public Libraries i
 | **Network**    | A wired connection and a fixed IP address for the server (ask your IT contact for a "DHCP reservation").     |
 | **Where**    | A physically secure spot (locked room). Patron records are stored on it. The disk is not encrypted by default; see [SECURITY.md](SECURITY.md).     |
 | **Employee**    | Someone comfortable typing commands over SSH or locally on the server. You do not need to be a programmer to complete the setup.     |
+| **(Optional) USB Storage Device**    | Used for saving the automatic backups off of the server; see [Backups](#backups) for more information.     |
 
 ## Install
 After booting Ubuntu Server, you have two different options:
@@ -178,6 +184,12 @@ These commands can be run on the server. Each has its own unique function that h
 | `athena unlock-user NAME` | Unlocks someone who is locked out |
 | `athena reset-totp NAME` | Resets someone's 2FA (lost phone) |
 | `athena cert` | Re-saves the certificate and shows its fingerprint |
+| `athena backup` | Makes an encrypted backup of the database, secrets, and user accounts |
+| `athena backups` | List the backups made of the server |
+| `athena backup-status` | Show when the last backup ran and the status of the backup |
+| `athena restore FILE KEY` | Restore a backup (FILE = .tar.age, KEY = your saved private key) |
+| `athena usb-setup` | Prepare a USB drive for backups (this will erase all of the data on a connected USB drive) |
+| `athena restore-usb` | Restore from a backup saved to a USB drive |
 | `athena version` | Shows the installed version |
 
 Old deleted records are permanently removed after 30 days, and expired sessions are cleaned up, automatically each night.
@@ -186,7 +198,70 @@ Athena is designed so most of these commands are abstracted through the web inte
 
 ## Backups
 
-**This feature is not finished yet.** Instructions for completing backups will be made available on a later date.
+Athena backs itself up automatically. Backups are encrypted with private/public key cryptography, so a stolen backup file or USB drive is unreadable without your private key.
+
+- Backups occur automatically every night at 02:45am (server time)
+- Backups are stored on the server in `/var/backups/athena` (only readable by root)
+- Each backup holds the database, the settings file, the server's certificate authority, and your USB drive list
+- Old backups are cleaned up automatically. Athena keeps the newest 14, plus the last backups of each of the most recent 12 months
+- Optional (but recommended): Copies can be automatically stored on a USB drive, so the backups survive the loss of the server in the event of a hardware failure
+
+### Your Backup Key
+
+During installation, Athena creates a backup key and shows the **private key once**. The public key remains on the server. The private key looks like this:
+
+```bash
+AGE-SECRET-KEY-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+```
+
+- Save the private key somewhere safe and **off the server**: somewhere like a Password manager, or printed and locked away
+- **Without the private key, no backup can be opened. Nobody, including he Athena developers, can recover the backup**
+- Keep it separate from the USB backup drive. Anyone holding both can read your data.
+
+For more information on making a backup from the command-line, see [Everyday commands](#everyday-commands).
+
+### Backing up to a USB drive
+
+1. Plug in a USB drive into your Ubuntu Server. (Make sure you don't have anything on this flash drive that you don't mind loosing, as the flash drive will be erased)
+2. Run `sudo athena usb-setup` and follow the prompts. You must type the drive's name to confirm.
+3. From now on, every nightly backup is also copied to the drive when it is plugged in, and plugging in the drive starts a backup right away.
+
+You can leave the drive plugged in, or remove it after each backup. If the USB drive isn't plugged in, backups will still be taken and will be saved for the next time you connect the drive.
+`athena backup-status` will warn you if no copy has reached a USB drive in the past 7 days. Rotating two drives are keeping one off site is a good habit.
+Remove the drive only when no backup is running, for example when `athena backup-status` shows the last backup finished.
+
+## Restoring from a Backup
+
+In the event that there is a hardware failure, disk replacement, or accidental deletion of data, you may have the need to recover from one of your backups. 
+
+### What you need
+
+1. Your private backup key
+2. A backup file (either from `/var/backups/athena` or from a connected USB drive)
+
+### Steps to restore the backup
+1. Set up a fresh install of Athena. Follow the steps in [Install](#install).
+2. Save your private key (the `AGE-SECRET-KEY-` line) into a file on the server. Save it to the home directory (`/home/USERNAME/backup-key.txt`)
+3. Plug in the USB drive and run:
+
+```bash
+sudo athena restore-usb
+```
+
+4. Pick the backup you want to restore (1 is the newest) and give the **full file path** to your key file. Do not use `~` here, because `sudo` runs as another user. Type `RESTORE` when prompted
+4a. To restore from a file on the server instead: `sudo athena restore /var/backups/athena/FILENAME.tar.age /home/USERNAME/backup-key.txt`
+5. When the restore finishes, run `athena status`, then sign in with your **old** accounts. Accounts created after the backups were made (for example: during the setup of Athena) are now gone, as the restore process replaces all the authentication credentials with those from the backup. Restoring also brings back your original backup key setup and USB drive list, so future backups keep working. Staff computers do not need a new certificate, because the server's certificate authority is restored too. (If you installed a certificate from the fresh install, replace it with the original with `athena cert`.)
+
+> **Restoring replaces all current data.** Always double check the backup's date in the list first.
+
+## Uninstalling
+
+If you ever have the need to perform a clean uninstall of Athena, you can use the included uninstaller. You may need to uninstall Athena to troubleshoot a specific issue, or repurpose this Ubuntu machine for something else. To uninstall Athena:
+
+1. Run `sudo ./uninstall.sh --dry-run` first to see what would be removed. If everything looks correct, proceed to step 2
+2. `sudo ./uninstall.sh` removes Athena, its database, and everything it installed. It keeps your backups and firewall rules unless you ask otherwise, and never touches your USB drive, your backup key, or the copy of this repository. See `./uninstall.sh --help`.
+
+If you are reinstalling Athena on a different machine, staff computers will need the new certificate (a new one is created on install), unless you restore from a backup.
 
 ## Troubleshooting
 
