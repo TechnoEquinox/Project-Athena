@@ -13,3 +13,7 @@
 ## v0.3.0
 - Added backup and restore functionality, with the option to also save backups to a connected USB flash drive
 - Added Uninstall scripts to the project
+
+## v0.4.0
+- Added the Athena server agent that handles server adminstration tasks
+- Added a Maintenance panel on the Admin page that controls the server agent, allowing admins to see server health, run server and athena updates, and make backups

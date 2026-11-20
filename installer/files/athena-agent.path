@@ -1,0 +1,9 @@
+[Unit]
+Description=Athena server agent: watch for requests from the web page
+
+[Path]
+PathExistsGlob=/var/lib/athena/agent/requests/*.json
+Unit=athena-agent.service
+
+[Install]
+WantedBy=multi-user.target

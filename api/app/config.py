@@ -36,5 +36,6 @@ class Config:
     )
     PROXY_HOPS = int(os.environ.get("PROXY_HOPS", "0"))
     RETENTION_DAYS = max(1, int(os.environ.get("RETENTION_DAYS", "30")))
+    AGENT_DIR = os.environ.get("AGENT_DIR", "/agent")   # shared folder for the server agent
     LIBRARY_TIMEZONE = parse_timezone(os.environ.get("LIBRARY_TIMEZONE", "America/New_York"))
     FISCAL_YEAR_START_MONTH = parse_fiscal_month(os.environ.get("FISCAL_YEAR_START_MONTH", "7"))

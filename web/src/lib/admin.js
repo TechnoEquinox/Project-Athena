@@ -185,6 +185,7 @@ export const ADMIN_TABS = [
   { key: 'locations', label: 'Locations', roles: ['admin'] },
   { key: 'restore', label: 'Restore', roles: ['admin'] },
   { key: 'audit', label: 'Audit log', roles: ['admin', 'manager'] },
+  { key: 'maintenance', label: 'Maintenance', roles: ['admin'] },
 ]
 
 export const adminTabsFor = (role) => ADMIN_TABS.filter((t) => t.roles.includes(role))

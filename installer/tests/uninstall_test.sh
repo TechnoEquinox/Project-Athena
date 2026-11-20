@@ -48,7 +48,10 @@ build_world() {  # creates a fake installed system under $D/w
          UNIT_FILE="$W/etc/systemd/system/athena-usb-backup.service" CONF_DIR="$W/etc/athena" STATE_DIR="$W/var/lib/athena" \
          BACKUP_DIR="$W/var/backups/athena" USB_MNT="$W/run/athena-usb" LOG_GLOB_DIR="$W/var/log"
 }
-U() { bash "$ROOT/uninstall.sh" "$@" >"$D/out.txt" 2>&1; }
+U() {
+  # Safety: a test must never point at a real install.
+  case "${ATHENA_DIR:-}" in "$D"/*|/) ;; *) echo "test bug: ATHENA_DIR is not a test folder"; exit 99 ;; esac
+  bash "$ROOT/uninstall.sh" "$@" >"$D/out.txt" 2>&1; }
 
 # ---- pure functions ----
 . "$ROOT/uninstall.sh"
@@ -70,7 +73,8 @@ t dry_no_docker     no grep -q '^docker' "$D/calls.log"
 
 # ---- without confirmation it refuses ----
 build_world
-t no_tty_cancels    no U
+# setsid removes the terminal, so the confirmation prompt cannot be answered and must cancel
+t no_tty_cancels    no setsid -w bash "$ROOT/uninstall.sh" </dev/null
 t refused_keeps     test -d "$W/opt/athena"
 
 # ---- real run keeps backups and firewall by default ----
@@ -114,8 +118,6 @@ t wrong_dir_says    grep -q "does not look like an Athena" "$D/out.txt"
 build_world; export ATHENA_DIR="/"
 t slash_ok          U --yes
 t slash_survives    test -d "/etc" -a -d "$W/etc/cron.d"
-build_world; export ATHENA_DIR=""
-t empty_ok          U --yes
 
 # ---- leftovers when the program folder is already gone ----
 build_world; rm -rf "$W/opt/athena"

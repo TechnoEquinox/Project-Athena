@@ -1,0 +1,8 @@
+[Unit]
+Description=Athena server agent: carry out requests from the web page
+
+[Service]
+Type=oneshot
+Environment=ATHENA_DIR=@INSTALL_DIR@
+ExecStart=/usr/local/sbin/athena-agent run-queue
+TimeoutStartSec=3h

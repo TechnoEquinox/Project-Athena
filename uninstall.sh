@@ -16,6 +16,8 @@ SBIN_BACKUP="${SBIN_BACKUP:-/usr/local/sbin/athena-backup}"
 LIB_DIR="${LIB_DIR:-/usr/local/lib/athena}"
 UDEV_RULE="${UDEV_RULE:-/etc/udev/rules.d/99-athena-backup.rules}"
 UNIT_FILE="${UNIT_FILE:-/etc/systemd/system/athena-usb-backup.service}"
+SBIN_AGENT="${SBIN_AGENT:-/usr/local/sbin/athena-agent}"
+UNITS_DIR="${UNITS_DIR:-/etc/systemd/system}"
 CONF_DIR="${CONF_DIR:-/etc/athena}"
 STATE_DIR="${STATE_DIR:-/var/lib/athena}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/athena}"
@@ -68,6 +70,9 @@ remove_path() { # path description
 # ---------- steps ----------
 
 stop_usb_pieces() {
+  if command -v systemctl >/dev/null 2>&1; then
+    run systemctl disable --now athena-agent.path athena-agent-health.timer athena-agent.service athena-agent-health.service 2>/dev/null || true
+  fi
   if command -v systemctl >/dev/null 2>&1 && [ -e "$UNIT_FILE" ]; then
     run systemctl stop athena-usb-backup.service 2>/dev/null || true
   fi
@@ -114,6 +119,11 @@ remove_files() {
   remove_path "$LIB_DIR"         "backup program libraries"
   remove_path "$UDEV_RULE"       "USB plug-in rule"
   remove_path "$UNIT_FILE"       "USB plug-in service"
+  remove_path "$SBIN_AGENT"      "the server agent program"
+  local u
+  for u in athena-agent.path athena-agent.service athena-agent-health.service athena-agent-health.timer; do
+    remove_path "$UNITS_DIR/$u" "server agent service file ($u)"
+  done
   remove_path "$CONF_DIR"        "backup key (public half) and USB drive list"
   remove_path "$STATE_DIR"       "backup status file"
   local f

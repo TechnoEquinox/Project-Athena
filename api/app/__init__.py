@@ -32,6 +32,7 @@ def create_app(config_object: type[Any] | str = Config):
     from .calls import bp as calls_bp
     from .techs import bp as techs_bp
     from .stats import bp as stats_bp
+    from .server import bp as server_bp
     app.register_blueprint(health.bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_users_bp)
@@ -43,6 +44,7 @@ def create_app(config_object: type[Any] | str = Config):
     app.register_blueprint(calls_bp)
     app.register_blueprint(techs_bp)
     app.register_blueprint(stats_bp)
+    app.register_blueprint(server_bp)
 
     from .cli import register_cli
     register_cli(app)

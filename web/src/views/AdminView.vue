@@ -10,6 +10,7 @@ import Tabs from 'primevue/tabs'
 import { adminTabsFor, resolveAdminTab } from '../lib/admin'
 import AuditPanel from '../panels/AuditPanel.vue'
 import LocationsPanel from '../panels/LocationsPanel.vue'
+import MaintenancePanel from '../panels/MaintenancePanel.vue'
 import RestorePanel from '../panels/RestorePanel.vue'
 import TechsPanel from '../panels/TechsPanel.vue'
 import UsersPanel from '../panels/UsersPanel.vue'
@@ -21,6 +22,7 @@ const PANELS = {
   locations: LocationsPanel,
   restore: RestorePanel,
   audit: AuditPanel,
+  maintenance: MaintenancePanel,
 }
 
 const auth = useAuth()
