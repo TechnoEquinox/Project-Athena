@@ -147,14 +147,22 @@ export const usageOptions = () => ({
 
 export const diskEmpty = (disk) => !disk || !disk.total
 
-export function diskChart(disk, backupsBytes = 0) {
-  const backups = Math.min(Math.max(backupsBytes || 0, 0), disk.used)
-  const other = Math.max(disk.used - backups, 0)
+export function diskChart(disk, backupsBytes = 0, filesBytes = 0, databaseBytes = 0) {
+  // Each slice is capped by what is left of the used space, so the pieces never add up to more than the disk.
+  let left = Math.max(disk.used, 0)
+  const take = (bytes) => {
+    const part = Math.min(Math.max(bytes || 0, 0), left)
+    left -= part
+    return part
+  }
+  const backups = take(backupsBytes)
+  const files = take(filesBytes)
+  const database = take(databaseBytes)
   return {
-    labels: ['Athena backups', 'Everything else', 'Free'],
+    labels: ['Athena backups', 'Athena files', 'Athena database', 'Everything else', 'Free'],
     datasets: [{
-      data: [backups, other, disk.free],
-      backgroundColor: [colorAt(1), colorAt(0), '#d1d5db'],
+      data: [backups, files, database, left, disk.free],
+      backgroundColor: [colorAt(1), colorAt(2), colorAt(4), colorAt(0), '#d1d5db'],
     }],
   }
 }

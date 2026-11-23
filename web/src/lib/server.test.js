@@ -145,14 +145,20 @@ describe('usage chart', () => {
 
 describe('disk chart', () => {
   const disk = { total: 100, used: 40, free: 60 }
-  it('splits used space into backups and everything else', () => {
-    const c = diskChart(disk, 10)
-    expect(c.labels).toEqual(['Athena backups', 'Everything else', 'Free'])
-    expect(c.datasets[0].data).toEqual([10, 30, 60])
+  it('splits used space into backups, Athena files, the database and everything else', () => {
+    const c = diskChart(disk, 10, 5, 3)
+    expect(c.labels).toEqual(['Athena backups', 'Athena files', 'Athena database', 'Everything else', 'Free'])
+    expect(c.datasets[0].data).toEqual([10, 5, 3, 22, 60])
+    expect(c.datasets[0].backgroundColor).toHaveLength(5)
   })
-  it('never lets backups exceed the used space', () => {
-    expect(diskChart(disk, 500).datasets[0].data).toEqual([40, 0, 60])
-    expect(diskChart(disk, null).datasets[0].data).toEqual([0, 40, 60])
+  it('works with only the backups figure, as before', () => {
+    expect(diskChart(disk, 10).datasets[0].data).toEqual([10, 0, 0, 30, 60])
+  })
+  it('never lets the pieces add up to more than the used space', () => {
+    expect(diskChart(disk, 500).datasets[0].data).toEqual([40, 0, 0, 0, 60])
+    expect(diskChart(disk, 30, 30, 30).datasets[0].data).toEqual([30, 10, 0, 0, 60])
+    expect(diskChart(disk, null, undefined, null).datasets[0].data).toEqual([0, 0, 0, 40, 60])
+    expect(diskChart(disk, -5, -5, -5).datasets[0].data).toEqual([0, 0, 0, 40, 60])
   })
   it('knows when there is nothing to draw', () => {
     expect(diskEmpty(null)).toBe(true)

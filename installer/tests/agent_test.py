@@ -272,6 +272,72 @@ class Actions(unittest.TestCase):
         flat = [part for step in mod.ACTIONS["docker-cleanup"]["steps"] for part in step]
         self.assertNotIn("-a", flat); self.assertNotIn("volume", flat); self.assertNotIn("system", flat)
 
+class Sizes(Base):
+    class _R:
+        def __init__(self, out, code=0):
+            self.stdout, self.returncode = out, code
+
+    def run_with(self, fn):
+        real = agent.subprocess.run
+        agent.subprocess.run = fn
+        try:
+            return agent.database_bytes()
+        finally:
+            agent.subprocess.run = real
+
+    def test_reads_the_database_size(self):
+        self.assertEqual(self.run_with(lambda *a, **k: self._R("7864320\n")), 7864320)
+
+    def test_cannot_ask_gives_none(self):
+        self.assertIsNone(self.run_with(lambda *a, **k: self._R("", 1)))
+        self.assertIsNone(self.run_with(lambda *a, **k: self._R("not a number")))
+
+        def boom(*a, **k):
+            raise OSError("no docker")
+        self.assertIsNone(self.run_with(boom))
+
+    def test_asks_inside_the_database_container_without_a_password_on_the_command_line(self):
+        seen = []
+        self.run_with(lambda cmd, **k: seen.append((cmd, k)) or self._R("1"))
+        cmd, kw = seen[0]
+        self.assertEqual(cmd[:5], ["docker", "compose", "exec", "-T", "db"])
+        self.assertEqual(kw["cwd"], agent.ATHENA_DIR)
+        self.assertNotIn("PASSWORD", " ".join(cmd))
+
+    def test_measures_the_athena_folder_and_caches_for_ten_minutes(self):
+        import shutil
+        shutil.rmtree(agent.ATHENA_DIR, ignore_errors=True)
+        os.makedirs(os.path.join(agent.ATHENA_DIR, "sub"))
+        open(os.path.join(agent.ATHENA_DIR, "sub", "a"), "w").write("x" * 100)
+        real = agent.database_bytes
+        agent.database_bytes = lambda: 555
+        try:
+            first = agent.sizes()
+            self.assertEqual((first["athena_bytes"], first["database_bytes"]), (100, 555))
+            open(os.path.join(agent.ATHENA_DIR, "sub", "b"), "w").write("y" * 50)
+            self.assertEqual(agent.sizes()["athena_bytes"], 100)        # cached
+            old = json.load(open(os.path.join(agent.OUT, ".sizes.json")))
+            old["t"] -= agent.SIZES_EVERY + 1
+            json.dump(old, open(os.path.join(agent.OUT, ".sizes.json"), "w"))
+            self.assertEqual(agent.sizes()["athena_bytes"], 150)        # measured again
+        finally:
+            agent.database_bytes = real
+            shutil.rmtree(agent.ATHENA_DIR, ignore_errors=True)
+
+    def test_health_carries_the_sizes(self):
+        agent.containers = lambda: []
+        real = agent.sizes
+        agent.sizes = lambda: {"t": 1, "athena_bytes": 11, "database_bytes": None}
+        d = os.path.join(TMP, "proc"); os.makedirs(d, exist_ok=True)
+        open(os.path.join(d, "stat"), "w").write("cpu  1 0 1 1 0 0 0 0\n")
+        open(os.path.join(d, "meminfo"), "w").write("MemTotal: 1000 kB\nMemAvailable: 500 kB\n")
+        open(os.path.join(d, "uptime"), "w").write("1.0 1.0\n")
+        agent.PROC = d
+        try:
+            data = agent.health()
+        finally:
+            agent.sizes = real
+        self.assertEqual((data["athena_bytes"], data["database_bytes"]), (11, None))
 
 class Cli(Base):
     def test_unknown_command(self):

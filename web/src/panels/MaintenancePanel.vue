@@ -149,7 +149,7 @@ const tiles = computed(() => {
 
 const usageData = computed(() => (historyEmpty(points.value) ? null : usageChart(points.value)))
 const diskData = computed(() => (!health.value || diskEmpty(health.value.disk)
-  ? null : diskChart(health.value.disk, health.value.backups_bytes)))
+    ? null : diskChart(health.value.disk, health.value.backups_bytes, health.value.athena_bytes, health.value.database_bytes)))
 const usageOpts = usageOptions()
 const diskOpts = diskOptions()
 </script>
@@ -220,7 +220,7 @@ const diskOpts = diskOptions()
       <UpdatesCard :updates="updates" :reboot-required="!!health.reboot_required" :busy="busy" @run="run" />
       <PowerCard :busy="busy" @run="run" />
 
-      <Card class="wide">
+      <Card>
         <template #title>This server</template>
         <template #content>
           <dl class="facts">
