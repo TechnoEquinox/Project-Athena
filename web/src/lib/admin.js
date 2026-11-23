@@ -132,7 +132,7 @@ export const AUDIT_ACTIONS = [
   'call_created', 'call_updated', 'call_deleted', 'call_restored',
   'location_created', 'location_renamed', 'location_deactivated', 'location_reactivated',
   'tech_created', 'tech_updated', 'tech_deactivated', 'tech_reactivated',
-  'retention_purge',
+  'retention_purge', 'server_job_requested', 'server_action_failed',
 ]
 
 export function humanizeAction(action) {

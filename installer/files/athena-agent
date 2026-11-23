@@ -32,6 +32,7 @@ MAX_REQUEST_BYTES = 4096
 KEEP_JOBS = 50          # how many finished jobs (status + log) to keep
 HISTORY_POINTS = 1440   # one point a minute = 24 hours
 ID_RE = re.compile(r"^[0-9a-f]{32}$")
+SIZES_EVERY = 600       # seconds beteen measurements of the Athena folder and the database
 BACKUP_RE = re.compile(r"^athena-backup-\d{8}-\d{6}\.tar\.age$")
 
 REQUESTS = os.path.join(AGENT_DIR, "requests")
@@ -319,6 +320,29 @@ def dir_size(path):
                 pass
     return total
 
+def database_bytes():
+    """The size of the Athena database, asked of the database container. None if it cannot be asked."""
+    try:
+        r = subprocess.run(
+            ["docker", "compose", "exec", "-T", "db", "sh", "-c",
+             'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "select pg_database_size(current_database())"'],
+            cwd=ATHENA_DIR, capture_output=True, text=True, timeout=20)
+        return int(r.stdout.strip()) if r.returncode == 0 else None
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+
+
+def sizes():
+    """Size of the Athena files and of the database. Slower to measure than the rest, so only every 10 minutes."""
+    path = os.path.join(OUT, ".sizes.json")
+    saved = read_json(path, None)
+    if isinstance(saved, dict) and 0 <= now() - saved.get("t", 0) < SIZES_EVERY:
+        return saved
+    data = {"t": now(),
+            "athena_bytes": dir_size(ATHENA_DIR) if os.path.isdir(ATHENA_DIR) else 0,
+            "database_bytes": database_bytes()}
+    write_json(path, data, 0o600)
+    return data
 
 def containers():
     project = os.path.basename(ATHENA_DIR.rstrip("/"))
@@ -390,6 +414,9 @@ def health():
         ver = open(os.path.join(ATHENA_DIR, "VERSION")).read().strip()
     except OSError:
         pass
+
+    sz = sizes()
+    
     data = {
         "generated_at": t,
         "cpu_percent": cpu,
@@ -398,6 +425,8 @@ def health():
         "memory": mem,
         "disk": disk("/"),
         "backups_bytes": dir_size(BACKUP_DIR) if os.path.isdir(BACKUP_DIR) else 0,
+        "athena_bytes": sz["athena_bytes"],
+        "database_bytes": sz["database_bytes"],
         "uptime_seconds": int(up),
         "reboot_required": os.path.exists(os.environ.get("ATHENA_REBOOT_FLAG", "/var/run/reboot-required")),
         "updates_pending": updates.get("count"),

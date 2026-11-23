@@ -173,7 +173,7 @@ describe('audit wording', () => {
   })
   it('lists every known action once, and each can be turned into words', () => {
     expect(new Set(AUDIT_ACTIONS).size).toBe(AUDIT_ACTIONS.length)
-    expect(AUDIT_ACTIONS).toEqual(expect.arrayContaining(['login_failed', 'client_deleted', 'call_restored']))
+    expect(AUDIT_ACTIONS).toEqual(expect.arrayContaining(['login_failed', 'client_deleted', 'call_restored', 'server_job_requested', 'server_action_failed']))
     for (const action of AUDIT_ACTIONS) expect(humanizeAction(action)).not.toMatch(/_/)
   })
   it('shows who did it', () => {

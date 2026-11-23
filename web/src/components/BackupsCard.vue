@@ -33,7 +33,6 @@ const total = computed(() => props.backups?.total_files ?? 0)
       </ul>
       <div class="sectop">
         <Button label="Back up now" icon="pi pi-download" :disabled="busy" @click="$emit('run', 'backup')" />
-        <span class="muted"> Takes a minute. A copy also goes to a plugged-in USB drive.</span>
       </div>
       <h4 class="sectop">Recent backups on this server</h4>
       <p v-if="!rows.length" class="muted">No backups yet.</p>
