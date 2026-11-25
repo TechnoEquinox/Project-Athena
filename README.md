@@ -1,4 +1,4 @@
-# Project-Athena (v0.4.1)
+# Project-Athena (v0.5.0)
 
 Project Athena is the open source CRM tooling for Connecticut Public Libraries in their work to provide Digital Navigation to their community. This tool allows staff in a libraries technology department to track unique clients across multiple appointments at different locations, and provide statistics, KPIs, and other useful metrics used for staffing, securing grants for future funding, and more. 
 
@@ -142,34 +142,6 @@ In the **Admin** page, add your **locations** first, then **navigators** (these 
 1. *admin* - Can access everything, including server administration settings
 2. *manager* - Has read-only access, cannot make any changes
 3. *navigator* - Can read/write clients, appointments, and calls for day-to-day usage
-
-### 5. Save your secrets offline
-
-On the Ubuntu Server, copy `opt/athena/.env` to a USB and keep that USB in a secure location. It contains the database password and the key that protects saved 2FA secrets. **If you lose it and the server dies, all the data in the database cannot be recovered!**
-
-On the Ubuntu Server:
-
-```bash
-cd ~
-sudo cp /opt/athena/.env ~/athena-env-backup
-sudo chown $USER ~/athena-env-backup
-```
-On a client Windows machine:
-
-```bash
-scp YOUR_USERNAME@SERVER_ADDRESS:athena-env-backup .\athena-env-backup.env
-```
-YOUR_USERNAME is the user you setup on the Ubuntu Server during installation.
-SERVER_ADDRESS is the IP address of the Ubuntu Server.
-
-Once complete, you will find the backup in the root directory of your user on your Windows PC. Then cleanup:
-
-On the Ubuntu Server:
-
-```bash
-cd ~
-sudo shred -u ~/athena-env-backup
-```
 
 ## Everyday commands
 
