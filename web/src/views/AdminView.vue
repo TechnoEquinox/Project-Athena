@@ -8,6 +8,7 @@ import Tab from 'primevue/tab'
 import TabList from 'primevue/tablist'
 import Tabs from 'primevue/tabs'
 import { adminTabsFor, resolveAdminTab } from '../lib/admin'
+import AvailabilityPanel from '../panels/AvailabilityPanel.vue'
 import AuditPanel from '../panels/AuditPanel.vue'
 import LocationsPanel from '../panels/LocationsPanel.vue'
 import MaintenancePanel from '../panels/MaintenancePanel.vue'
@@ -19,6 +20,7 @@ import { useAuth } from '../stores/auth'
 const PANELS = {
   users: UsersPanel,
   techs: TechsPanel,
+  availability: AvailabilityPanel,
   locations: LocationsPanel,
   restore: RestorePanel,
   audit: AuditPanel,

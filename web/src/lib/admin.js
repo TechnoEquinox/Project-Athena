@@ -129,6 +129,8 @@ export const AUDIT_ACTIONS = [
   'client_created', 'client_updated', 'client_deleted', 'client_restored',
   'device_added', 'device_updated', 'device_removed', 'device_restored',
   'appointment_created', 'appointment_updated', 'appointment_deleted', 'appointment_restored',
+  'booking_created', 'booking_updated', 'booking_deleted', 'navigator_availability_updated',
+  'time_off_created', 'time_off_updated', 'time_off_deleted',
   'call_created', 'call_updated', 'call_deleted', 'call_restored',
   'location_created', 'location_renamed', 'location_deactivated', 'location_reactivated',
   'tech_created', 'tech_updated', 'tech_deactivated', 'tech_reactivated',
@@ -182,6 +184,7 @@ export function adminErrorMessage(err) {
 export const ADMIN_TABS = [
   { key: 'users', label: 'Users', roles: ['admin'] },
   { key: 'techs', label: 'Techs', roles: ['admin'] },
+  { key: 'availability', label: 'Navigator Availability', roles: ['admin'] },
   { key: 'locations', label: 'Locations', roles: ['admin'] },
   { key: 'restore', label: 'Restore', roles: ['admin'] },
   { key: 'audit', label: 'Audit log', roles: ['admin', 'manager'] },

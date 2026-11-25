@@ -10,7 +10,7 @@ from . import audit
 from .auth import clock
 from .auth.middleware import roles_required
 from .extensions import db
-from .models import Appointment, CallLog, Client, ClientDevice
+from .models import Appointment, Booking, CallLog, Client, ClientDevice
 from .validation import ValidationError, clean_client, clean_device
 
 bp = Blueprint("clients", __name__, url_prefix="/api/clients")
@@ -228,6 +228,12 @@ def delete_client(client_id):
             .values(deleted_at=now)
         )
         counts[name] = result.rowcount
+
+    # Free the slots of a deleted client. Kept out of the counts below on purpose
+    db.session.execute(
+        update(Booking).where(Booking.client_id == client_id, Booking.deleted_at.is_(None)).values(deleted_at=now)
+    )
+
     audit.record(
         "client_deleted", actor=_actor(), target_type="client", target_id=client_id, detail=counts
     )

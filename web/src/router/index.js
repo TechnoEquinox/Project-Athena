@@ -12,6 +12,7 @@ import AppointmentsView from '../views/AppointmentsView.vue'
 import AppointmentDetailView from '../views/AppointmentDetailView.vue'
 import AdminView from '../views/AdminView.vue'
 import CallsView from '../views/CallsView.vue'
+import CalendarView from '../views/CalendarView.vue'
 import DashboardView from '../views/DashboardView.vue'
 
 export const router = createRouter({
@@ -26,6 +27,7 @@ export const router = createRouter({
     { path: '/appointments', name: 'appointments', component: AppointmentsView },
     { path: '/appointments/:id(\\d+)', name: 'appointment', component: AppointmentDetailView, props: true },
     { path: '/admin/:tab?', name: 'admin', component: AdminView, meta: { roles: ['admin', 'manager'] } },
+    { path: '/calendar', name: 'calendar', component: CalendarView },
     { path: '/calls', name: 'calls', component: CallsView },
     { path: '/dashboard', redirect: { name: 'home' } },
   ],
