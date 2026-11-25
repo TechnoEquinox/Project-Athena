@@ -20,6 +20,7 @@ async function signOut() {
     <router-link :to="{ name: 'home' }" class="brand">Athena</router-link>
     <router-link :to="{ name: 'home' }" class="navlink">Dashboard</router-link>
     <router-link to="/clients" class="navlink">Clients</router-link>
+    <router-link to="/calendar" class="navlink">Calendar</router-link>
     <router-link to="/appointments" class="navlink">Appointments</router-link>
     <router-link to="/calls" class="navlink">Calls</router-link>
     <router-link v-if="auth.canViewAdmin" to="/admin" class="navlink">Admin</router-link>

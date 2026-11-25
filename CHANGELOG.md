@@ -22,3 +22,10 @@
 - Formatting fixes in the Maintenance tab
 - Added Athena project size, and Athena database sizes to the Pie Chart on the Maintenance tab
 - Added missing entries to filter from on the audit log
+
+## v0.5.0
+- Added the ability to book appointments with existing clients
+- Added a "Navigator Availability" section in the admin panel, where admins can set the appointment availibility of their Digital Navigators
+- Added the ability to block off days on the calendar for both a single navigator, and for the entire Digital Navigation staff
+- Added appointment offsets, so available appointment times are staggered in a Digital Navigator's schedule
+- Added a new calendar tab that allows Digital Navigation staff to see upcoming and past appointments

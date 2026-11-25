@@ -221,7 +221,7 @@ describe('adminErrorMessage', () => {
 describe('admin tabs', () => {
   it('shows an admin every tab, in order', () => {
     expect(adminTabsFor('admin').map((t) => t.key)).toEqual([
-      'users', 'techs', 'locations', 'restore', 'audit', 'maintenance',
+      'users', 'techs', 'availability', 'locations', 'restore', 'audit', 'maintenance',
     ])
   })
   it('shows a manager only the audit log', () => {
